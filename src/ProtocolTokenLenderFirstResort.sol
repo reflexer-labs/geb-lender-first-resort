@@ -31,7 +31,7 @@ abstract contract TokenLike {
 }
 abstract contract AuctionHouseLike {
     function activeStakedTokenAuctions() virtual public view returns (uint256);
-    function startAuction(uint256) virtual external returns (uint256);
+    function startAuction(uint256, uint256) virtual external returns (uint256);
 }
 abstract contract AccountingEngineLike {
     function debtAuctionBidSize() virtual public view returns (uint256);
@@ -95,10 +95,12 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     uint256   public exitWindow;
     // Min maount of ancestor tokens that must remain in the contract and not be auctioned
     uint256   public minStakedTokensToKeep;
+    // Max number of auctions that can be active at a time
+    uint256   public maxConcurrentAuctions;
     // Amount of ancestor tokens to auction at a time
     uint256   public tokensToAuction;
-    // Minimum amount of tokens to auction
-    uint256   public minTokensToAuction;
+    // Initial amount of system coins to request in exchange for tokensToAuction
+    uint256   public systemCoinsToRequest;
 
     // Exit data
     mapping(address => ExitWindow) public exitWindows;
@@ -131,7 +133,7 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     event ToggleJoin(bool canJoin);
     event ToggleBypassAuctions(bool bypassAuctions);
     event ToggleForcedExit(bool forcedExit);
-    event AuctionAncestorTokens(address auctionHouse, uint256 amount);
+    event AuctionAncestorTokens(address auctionHouse, uint256 amountAuctioned, uint256 amountRequested);
     event RequestExit(address indexed account, uint256 start, uint256 end);
     event Join(address indexed account, uint256 price, uint256 amount);
     event Exit(address indexed account, uint256 price, uint256 amount);
@@ -150,7 +152,7 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
       uint256 exitWindow_,
       uint256 minStakedTokensToKeep_,
       uint256 tokensToAuction_,
-      uint256 minTokensToAuction_
+      uint256 systemCoinsToRequest_
     ) public {
         require(maxDelay_ > 0, "ProtocolTokenLenderFirstResort/null-max-delay");
         require(both(maxExitWindow_ > 0, maxExitWindow_ > minExitWindow_), "ProtocolTokenLenderFirstResort/invalid-max-exit-window");
@@ -159,7 +161,7 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         require(both(exitWindow_ >= minExitWindow_, exitWindow_ <= maxExitWindow_), "ProtocolTokenLenderFirstResort/invalid-exit-window");
         require(minStakedTokensToKeep_ > 0, "ProtocolTokenLenderFirstResort/null-min-staked-tokens");
         require(tokensToAuction_ > 0, "ProtocolTokenLenderFirstResort/null-tokens-to-auction");
-        require(both(minTokensToAuction_ > 0, minTokensToAuction_ < tokensToAuction_), "ProtocolTokenLenderFirstResort/invalid-min-tokens-to-auction");
+        require(systemCoinsToRequest_ > 0, "ProtocolTokenLenderFirstResort/null-sys-coins-to-request");
         require(auctionHouse_ != address(0), "ProtocolTokenLenderFirstResort/null-auction-house");
         require(accountingEngine_ != address(0), "ProtocolTokenLenderFirstResort/null-accounting-engine");
         require(safeEngine_ != address(0), "ProtocolTokenLenderFirstResort/null-safe-engine");
@@ -167,6 +169,7 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
 
         authorizedAccounts[msg.sender] = 1;
         canJoin                        = true;
+        maxConcurrentAuctions          = uint(-1);
 
         MAX_DELAY                      = maxDelay_;
         MIN_EXIT_WINDOW                = minExitWindow_;
@@ -177,7 +180,7 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
 
         minStakedTokensToKeep          = minStakedTokensToKeep_;
         tokensToAuction                = tokensToAuction_;
-        minTokensToAuction             = minTokensToAuction_;
+        systemCoinsToRequest           = systemCoinsToRequest_;
 
         auctionHouse                   = AuctionHouseLike(auctionHouse_);
         accountingEngine               = AccountingEngineLike(accountingEngine_);
@@ -259,12 +262,16 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
           minStakedTokensToKeep = data;
         }
         else if (parameter == "tokensToAuction") {
-          require(both(data > 0, data > minTokensToAuction), "ProtocolTokenLenderFirstResort/invalid-tokens-to-auction");
+          require(data > 0, "ProtocolTokenLenderFirstResort/invalid-tokens-to-auction");
           tokensToAuction = data;
         }
-        else if (parameter == "minTokensToAuction") {
-          require(both(data > 0, data < tokensToAuction), "ProtocolTokenLenderFirstResort/invalid-min-tokens-to-auction");
-          minTokensToAuction = data;
+        else if (parameter == "systemCoinsToRequest") {
+          require(data > 0, "ProtocolTokenLenderFirstResort/invalid-sys-coins-to-request");
+          systemCoinsToRequest = data;
+        }
+        else if (parameter == "maxConcurrentAuctions") {
+          require(data > 1, "ProtocolTokenLenderFirstResort/invalid-max-concurrent-auctions");
+          maxConcurrentAuctions = data;
         }
         else revert("ProtocolTokenLenderFirstResort/modify-unrecognized-param");
         emit ModifyParameters(parameter, data);
@@ -341,8 +348,8 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     */
     function canAuctionTokens() public view returns (bool) {
         return both(
-          protocolUnderwater(),
-          addition(minStakedTokensToKeep, minTokensToAuction) <= depositedAncestor()
+          both(protocolUnderwater(), addition(minStakedTokensToKeep, tokensToAuction) <= depositedAncestor()),
+          auctionHouse.activeStakedTokenAuctions() < maxConcurrentAuctions
         );
     }
 
@@ -360,8 +367,9 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     /*
     * @notify Pull ancestor token rewards from the dripper
     */
-    function pullReward() public nonReentrant {
+    function pullReward() public {
         if (either(block.number == lastRewardBlock, protocolUnderwater())) return;
+        lastRewardBlock = block.number;
         rewardDripper.dripReward();
     }
 
@@ -371,14 +379,10 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     function auctionAncestorTokens() external nonReentrant {
         require(canAuctionTokens(), "ProtocolTokenLenderFirstResort/cannot-auction-tokens");
 
-        uint256 selfAncestorBalance = depositedAncestor();
-        uint256 amountToSell        = (addition(minStakedTokensToKeep, tokensToAuction) <= selfAncestorBalance) ?
-                                      tokensToAuction : minTokensToAuction;
+        ancestor.approve(address(auctionHouse), tokensToAuction);
+        auctionHouse.startAuction(tokensToAuction, systemCoinsToRequest);
 
-        ancestor.approve(address(auctionHouse), amountToSell);
-        auctionHouse.startAuction(amountToSell);
-
-        emit AuctionAncestorTokens(address(auctionHouse), amountToSell);
+        emit AuctionAncestorTokens(address(auctionHouse), tokensToAuction, systemCoinsToRequest);
     }
 
     /*
