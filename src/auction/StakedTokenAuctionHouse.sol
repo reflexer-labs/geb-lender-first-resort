@@ -265,10 +265,11 @@ contract StakedTokenAuctionHouse {
         } else {
             safeEngine.transferInternalCoins(msg.sender, address(this), bid);
             safeEngine.transferInternalCoins(address(this), bids[id].highBidder, bids[id].bidAmount);
+
+            bids[id].highBidder = msg.sender;
         }
 
         bids[id].bidAmount  = bid;
-        bids[id].highBidder = msg.sender;
         bids[id].bidExpiry  = addUint48(uint48(now), bidDuration);
 
         emit IncreaseBidSize(id, msg.sender, amountToBuy, bid, bids[id].bidExpiry);
