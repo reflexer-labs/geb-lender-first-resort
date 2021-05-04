@@ -210,6 +210,7 @@ contract StakedTokenAuctionHouse {
         require(auctionsStarted < uint256(-1), "StakedTokenAuctionHouse/overflow");
         require(accountingEngine != address(0), "StakedTokenAuctionHouse/null-accounting-engine");
         require(both(amountToSell > 0, systemCoinsRequested > 0), "StakedTokenAuctionHouse/null-amounts");
+        require(systemCoinsRequested <= uint256(-1) / ONE, "StakedTokenAuctionHouse/large-sys-coin-request");
 
         id = ++auctionsStarted;
 
@@ -322,8 +323,10 @@ contract StakedTokenAuctionHouse {
         // decrease amount of active auctions
         activeStakedTokenAuctions = subtract(activeStakedTokenAuctions, 1);
 
-        // send the system coin bid back to the high bidder
-        safeEngine.transferInternalCoins(address(this), bids[id].highBidder, bids[id].bidAmount);
+        // send the system coin bid back to the high bidder in case there was at least one bid
+        if (bids[id].bidExpiry != 0) {
+          safeEngine.transferInternalCoins(address(this), bids[id].highBidder, bids[id].bidAmount);
+        }
 
         // send the staked tokens to the token burner
         stakedToken.transferFrom(address(this), tokenBurner, bids[id].amountToSell);
