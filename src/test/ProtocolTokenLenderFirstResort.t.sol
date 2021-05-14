@@ -45,6 +45,30 @@ contract RewardDripperMock {
     }
 }
 
+contract Caller {
+    ProtocolTokenLenderFirstResort stakingPool;
+
+    constructor (ProtocolTokenLenderFirstResort add) public {
+        stakingPool = add;
+    }
+
+    function doModifyParameters(bytes32 param, uint256 data) public {
+        stakingPool.modifyParameters(param, data);
+    }
+
+    function doModifyParameters(bytes32 param, address data) public {
+        stakingPool.modifyParameters(param, data);
+    }
+
+    function doAddAuthorization(address data) public {
+        stakingPool.addAuthorization(data);
+    }
+
+    function doRemoveAuthorization(address data) public {
+        stakingPool.removeAuthorization(data);
+    }
+}
+
 contract ProtocolTokenLenderFirstResortTest is DSTest {
     Hevm hevm;
     DSToken ancestor;
@@ -54,6 +78,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     AccountingEngineMock accountingEngine;
     SAFEEngineMock safeEngine;
     RewardDripperMock rewardDripper;
+    Caller unauth;
 
     uint maxDelay = 48 weeks;
     uint minExitWindow = 12 hours;
@@ -94,6 +119,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         ancestor.mint(address(this), 10000000 ether);
         descendant.setOwner(address(stakingPool));
         hevm.roll(1);
+        unauth = new Caller(stakingPool);
     }
 
     function test_setup() public {
@@ -361,6 +387,24 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         );
     }
 
+    function test_add_authorization() public {
+        stakingPool.addAuthorization(address(0xfab));
+        assertEq(stakingPool.authorizedAccounts(address(0xfab)), 1);
+    }
+
+    function test_remove_authorization() public {
+        stakingPool.removeAuthorization(address(this));
+        assertEq(stakingPool.authorizedAccounts(address(this)), 0);
+    }
+
+    function testFail_add_authorization_unauthorized() public {
+        unauth.doAddAuthorization(address(0xfab));
+    }
+
+    function testFail_remove_authorization_unauthorized() public {
+        unauth.doRemoveAuthorization(address(this));
+    }
+
     function test_modify_parameters() public {
         stakingPool.modifyParameters("exitDelay", maxDelay - 10);
         assertEq(stakingPool.exitDelay(), maxDelay - 10);
@@ -428,6 +472,14 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
 
     function testFail_modify_parameters_invalid_max_concurrent_auctions() public {
         stakingPool.modifyParameters("maxConcurrentAuctions", 1);
+    }
+
+    function testFail_modify_parameters_unauthorized_address() public {
+        unauth.doModifyParameters("rewardDripper", address(1));
+    }
+
+    function testFail_modify_parameters_unauthorized_uint() public {
+        unauth.doModifyParameters("systemCoinsToRequest", 5 ether);
     }
 
     function test_join() public {

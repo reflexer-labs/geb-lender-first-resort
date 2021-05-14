@@ -353,18 +353,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         );
     }
 
-    //     function auctionDebt() external returns (uint256 id) {
-    //     require(debtAuctionBidSize <= unqueuedUnauctionedDebt(), "AccountingEngine/insufficient-debt");
-    //     settleDebt(safeEngine.coinBalance(address(this)));
-    //     require(safeEngine.coinBalance(address(this)) == 0, "AccountingEngine/surplus-not-zero");
-    //     require(debtAuctionHouse.protocolToken() != address(0), "AccountingEngine/debt-auction-house-null-prot");
-    //     require(protocolTokenAuthority.authorizedAccounts(address(debtAuctionHouse)) == 1, "AccountingEngine/debt-auction-house-cannot-print-prot");
-    //     require(canPrintProtocolTokens(), "AccountingEngine/staking-pool-denies-printing");
-    //     totalOnAuctionDebt = addition(totalOnAuctionDebt, debtAuctionBidSize);
-    //     id = debtAuctionHouse.startAuction(address(this), initialDebtAuctionMintedTokens, debtAuctionBidSize);
-    //     emit AuctionDebt(id, totalOnAuctionDebt, safeEngine.debtBalance(address(this)));
-    // }
-
     /*
     * @notice Returns whether the system can mint new ancestor tokens
     */
