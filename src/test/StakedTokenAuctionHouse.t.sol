@@ -35,6 +35,8 @@ contract Caller {
 }
 
 contract SAFEEngineMock {
+    event TransferInternalCoins(address indexed src, address indexed dst, uint256 rad);
+
     mapping (address => uint256)                       public coinBalance;      // [rad]
     // Amount of debt held by an account. Coins & debt are like matter and antimatter. They nullify each other
     mapping (address => uint256)                       public debtBalance;      // [rad]
@@ -44,10 +46,31 @@ contract SAFEEngineMock {
         else if (param == "debt") debtBalance[who] = val;
         else revert("unrecognized param");
     }
+
+    function addition(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x + y) >= x, "SAFEEngine/add-uint-uint-overflow");
+    }
+    function subtract(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "SAFEEngine/sub-uint-uint-underflow");
+    }
+
+    function transferInternalCoins(address src, address dst, uint256 rad) external {
+        coinBalance[src] = subtract(coinBalance[src], rad);
+        coinBalance[dst] = addition(coinBalance[dst], rad);
+        emit TransferInternalCoins(src, dst, rad);
+    }
 }
 
 contract AccountingEngineMock {
+    uint public totalOnAuctionDebt = 0;
 
+    function setTotalOnAuctionDebt(uint val) public {
+        totalOnAuctionDebt = val;
+    }
+
+    function cancelAuctionedDebtWithSurplus(uint val) public {
+        totalOnAuctionDebt = (totalOnAuctionDebt - val > totalOnAuctionDebt) ? 0 : totalOnAuctionDebt - val;
+    }
 }
 
 contract StakedTokenAuctionHouseTest is DSTest {
@@ -81,7 +104,15 @@ contract StakedTokenAuctionHouseTest is DSTest {
         unauth = new Caller(auctionHouse);
 
         prot.approve(address(auctionHouse), uint(-1));
-        prot.mint(address(this), 1000 ether);
+        prot.mint(address(this), 100000 ether);
+
+        safeEngine.modifyBalance("coin", address(this), 300 ether);
+        safeEngine.modifyBalance("coin", address(auctionHouse), 100 ether);
+
+        auctionHouse.startAuction(
+            10 ether,
+            100 ether
+        );
     }
 
     // --- Tests ---
@@ -90,6 +121,7 @@ contract StakedTokenAuctionHouseTest is DSTest {
         assertEq(address(auctionHouse.stakedToken()), address(prot));
         assertEq(auctionHouse.contractEnabled(), 1);
         assertEq(auctionHouse.authorizedAccounts(address(this)), 1);
+        assertEq(prot.balanceOf(address(auctionHouse)), 10 ether);
     }
 
     function testFail_setup_null_safeEngine() public {
@@ -178,14 +210,9 @@ contract StakedTokenAuctionHouseTest is DSTest {
     }
 
     function test_start_auction() public {
-        uint id = auctionHouse.startAuction(
-            10 ether,
-            100 ether
-        );
-
         assertEq(auctionHouse.auctionsStarted(), 1);
         (uint256 bidAmount, uint256 amountToSell, address highBidder, uint48  bidExpiry, uint48  auctionDeadline) =
-                auctionHouse.bids(id);
+                auctionHouse.bids(1);
 
         assertEq(amountToSell, 10 ether);
         assertEq(bidAmount, 100 ether);
@@ -232,39 +259,136 @@ contract StakedTokenAuctionHouseTest is DSTest {
     }
 
     function test_restart_auction() public {
-        uint id = auctionHouse.startAuction(
-            10 ether,
-            100 ether
-        );
-
         hevm.warp(now + auctionHouse.totalAuctionLength() + 1);
 
-        auctionHouse.restartAuction(id);
+        auctionHouse.restartAuction(1);
 
         (uint256 bidAmount, uint256 amountToSell, address highBidder, uint48  bidExpiry, uint48  auctionDeadline) =
-                auctionHouse.bids(id);
+                auctionHouse.bids(1);
 
         assertEq(bidAmount, 95 ether);
         assertEq(auctionDeadline, now + auctionHouse.totalAuctionLength());
     }
 
     function testFail_restart_auction_before_finish() public {
-        uint id = auctionHouse.startAuction(
-            10 ether,
-            100 ether
-        );
-
         hevm.warp(now + auctionHouse.totalAuctionLength());
 
-        auctionHouse.restartAuction(id);
+        auctionHouse.restartAuction(1);
     }
 
     function testFail_restart_auction_invalid() public {
-        uint id = auctionHouse.startAuction(
-            10 ether,
-            100 ether
-        );
-
         auctionHouse.restartAuction(66);
+    }
+
+    function testFail_restart_already_bid() public {
+        auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+        hevm.warp(now + auctionHouse.totalAuctionLength() + 1);
+
+        auctionHouse.restartAuction(1);
+    }
+
+    function test_increase_bid_size() public {
+        auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+        // previousAccountingEngineBalance = safeEngine.
+        (uint256 bidAmount, uint256 amountToSell, address highBidder, uint48 bidExpiry, uint48 auctionDeadline) =
+                auctionHouse.bids(1);
+
+        assertEq(amountToSell, 10 ether);
+        assertEq(bidAmount, 105.1 ether);
+        assertEq(highBidder, address(this));
+        assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
+        assertEq(bidExpiry, now + auctionHouse.bidDuration());
+        assertEq(safeEngine.coinBalance(address(auctionHouse)), 105.1 ether);
+        assertEq(safeEngine.coinBalance(address(accountingEngine)), 100 ether);
+
+        auctionHouse.increaseBidSize(1, 10 ether, 112 ether);
+        (bidAmount, amountToSell, highBidder,  bidExpiry, auctionDeadline) =
+                auctionHouse.bids(1);
+
+        assertEq(amountToSell, 10 ether);
+        assertEq(bidAmount, 112 ether);
+        assertEq(highBidder, address(this));
+        assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
+        assertEq(bidExpiry, now + auctionHouse.bidDuration());
+        assertEq(safeEngine.coinBalance(address(auctionHouse)), 112 ether);
+        assertEq(safeEngine.coinBalance(address(accountingEngine)), 100 ether);
+    }
+
+    function testFail_increase_bid_size_disabled() public {
+        auctionHouse.disableContract();
+        auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+    }
+
+    function testFail_increase_bid_size_finished() public {
+        hevm.warp(now + auctionHouse.totalAuctionLength() + 1);
+        auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+    }
+
+    function testFail_increase_bid_size_expired() public {
+        auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+        hevm.warp(now + auctionHouse.bidDuration() + 1);
+        auctionHouse.increaseBidSize(1, 10 ether, 112 ether);
+    }
+
+    function testFail_increase_bid_size_invalid_amountToBuy() public {
+        auctionHouse.increaseBidSize(1, 10.11 ether, 105.1 ether);
+    }
+
+    function testFail_increase_bid_size_insufficient_increase() public {
+        auctionHouse.increaseBidSize(1, 10 ether, 105 ether);
+    }
+
+    function test_settle_auction() public {
+        auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+        (,,, uint48 bidExpiry,) = auctionHouse.bids(1);
+
+        hevm.warp(bidExpiry + 1);
+        uint previousBalance = prot.balanceOf(address(this));
+        auctionHouse.settleAuction(1);
+        assertEq(auctionHouse.activeStakedTokenAuctions(), 0);
+
+        assertEq(safeEngine.coinBalance(address(auctionHouse)), 0);
+        assertEq(safeEngine.coinBalance(address(accountingEngine)), 205.1 ether); // bug: setting the accountingEngine as default winner?
+        assertEq(prot.balanceOf(address(this)), previousBalance + 10 ether);
+
+    }
+
+    function testFail_settle_auction_early() public {
+        auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+        (,,, uint48 bidExpiry,) = auctionHouse.bids(1);
+
+        hevm.warp(bidExpiry - 1);
+        auctionHouse.settleAuction(1);
+    }
+
+    function testFail_settle_auction_disabled() public {
+        auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+        (,,, uint48 bidExpiry,) = auctionHouse.bids(1);
+
+        hevm.warp(bidExpiry + 1);
+        auctionHouse.disableContract();
+        auctionHouse.settleAuction(1);
+    }
+
+    function testFail_settle_auction_no_bids() public {
+        (,,,, uint auctionDeadline) = auctionHouse.bids(1);
+
+        hevm.warp(auctionDeadline + 1);
+        auctionHouse.settleAuction(1);
+    }
+
+    function test_terminate_auction_prematurely() public {
+        auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+        auctionHouse.disableContract();
+        uint previousBalance = prot.balanceOf(address(this));
+        auctionHouse.terminateAuctionPrematurely(1);
+        assertEq(safeEngine.coinBalance(address(auctionHouse)), 0);
+        assertEq(safeEngine.coinBalance(address(accountingEngine)), 100 ether);
+        assertEq(prot.balanceOf(address(this)), previousBalance); // note: why burn the rest of it?
+    }
+
+    function testFail_terminate_auction_prematurely_enabled() public {
+        auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+        auctionHouse.terminateAuctionPrematurely(1);
     }
 }
