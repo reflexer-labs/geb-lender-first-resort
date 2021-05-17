@@ -107,7 +107,6 @@ contract StakedTokenAuctionHouseTest is DSTest {
         prot.mint(address(this), 100000 ether);
 
         safeEngine.modifyBalance("coin", address(this), 300 ether);
-        safeEngine.modifyBalance("coin", address(auctionHouse), 100 ether);
 
         auctionHouse.startAuction(
             10 ether,
@@ -216,7 +215,7 @@ contract StakedTokenAuctionHouseTest is DSTest {
 
         assertEq(amountToSell, 10 ether);
         assertEq(bidAmount, 100 ether);
-        assertEq(highBidder, address(accountingEngine));
+        assertEq(highBidder, address(0));
         assertEq(auctionDeadline, now + auctionHouse.totalAuctionLength());
         assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
     }
@@ -299,7 +298,6 @@ contract StakedTokenAuctionHouseTest is DSTest {
         assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
         assertEq(bidExpiry, now + auctionHouse.bidDuration());
         assertEq(safeEngine.coinBalance(address(auctionHouse)), 105.1 ether);
-        assertEq(safeEngine.coinBalance(address(accountingEngine)), 100 ether);
 
         auctionHouse.increaseBidSize(1, 10 ether, 112 ether);
         (bidAmount, amountToSell, highBidder,  bidExpiry, auctionDeadline) =
@@ -311,7 +309,6 @@ contract StakedTokenAuctionHouseTest is DSTest {
         assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
         assertEq(bidExpiry, now + auctionHouse.bidDuration());
         assertEq(safeEngine.coinBalance(address(auctionHouse)), 112 ether);
-        assertEq(safeEngine.coinBalance(address(accountingEngine)), 100 ether);
     }
 
     function testFail_increase_bid_size_disabled() public {
@@ -348,7 +345,7 @@ contract StakedTokenAuctionHouseTest is DSTest {
         assertEq(auctionHouse.activeStakedTokenAuctions(), 0);
 
         assertEq(safeEngine.coinBalance(address(auctionHouse)), 0);
-        assertEq(safeEngine.coinBalance(address(accountingEngine)), 205.1 ether); // bug: setting the accountingEngine as default winner?
+        assertEq(safeEngine.coinBalance(address(accountingEngine)), 105.1 ether);
         assertEq(prot.balanceOf(address(this)), previousBalance + 10 ether);
 
     }
@@ -378,17 +375,23 @@ contract StakedTokenAuctionHouseTest is DSTest {
     }
 
     function test_terminate_auction_prematurely() public {
+        uint previousBalance = prot.balanceOf(address(this));
         auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
         auctionHouse.disableContract();
-        uint previousBalance = prot.balanceOf(address(this));
         auctionHouse.terminateAuctionPrematurely(1);
         assertEq(safeEngine.coinBalance(address(auctionHouse)), 0);
-        assertEq(safeEngine.coinBalance(address(accountingEngine)), 100 ether);
-        assertEq(prot.balanceOf(address(this)), previousBalance); // note: why burn the rest of it?
+        assertEq(safeEngine.coinBalance(address(accountingEngine)), 0);
+        assertEq(prot.balanceOf(address(this)), previousBalance);
+        assertEq(prot.balanceOf(auctionHouse.tokenBurner()), 10 ether);
     }
 
     function testFail_terminate_auction_prematurely_enabled() public {
         auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+        auctionHouse.terminateAuctionPrematurely(1);
+    }
+
+    function testFail_terminate_auction_prematurely_no_bid() public {
+        auctionHouse.disableContract();
         auctionHouse.terminateAuctionPrematurely(1);
     }
 }

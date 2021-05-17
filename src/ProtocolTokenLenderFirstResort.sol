@@ -367,7 +367,7 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     /*
     * @notify Pull ancestor token rewards from the dripper
     */
-    function pullReward() internal {
+    function pullReward() public {
         if (either(block.number == lastRewardBlock, protocolUnderwater())) return;
         lastRewardBlock = block.number;
         rewardDripper.dripReward();

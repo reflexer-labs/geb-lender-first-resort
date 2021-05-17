@@ -126,7 +126,7 @@ contract StakedTokenAuctionHouse {
     event DisableContract(address sender);
 
     // --- Init ---
-    constructor(address safeEngine_, address stakedToken_) public { // add accountingEngine?
+    constructor(address safeEngine_, address stakedToken_) public {
         require(safeEngine_ != address(0x0), "StakedTokenAuctionHouse/invalid_safe_engine");
         require(stakedToken_ != address(0x0), "StakedTokenAuctionHouse/invalid_token");
         authorizedAccounts[msg.sender] = 1;
@@ -218,7 +218,7 @@ contract StakedTokenAuctionHouse {
 
         bids[id].amountToSell     = amountToSell;
         bids[id].bidAmount        = systemCoinsRequested;
-        bids[id].highBidder       = accountingEngine;
+        bids[id].highBidder       = address(0);
         bids[id].auctionDeadline  = addUint48(uint48(now), totalAuctionLength);
 
         activeStakedTokenAuctions = addUint256(activeStakedTokenAuctions, 1);
@@ -266,7 +266,8 @@ contract StakedTokenAuctionHouse {
             safeEngine.transferInternalCoins(msg.sender, address(this), subtract(bid, bids[id].bidAmount));
         } else {
             safeEngine.transferInternalCoins(msg.sender, address(this), bid);
-            safeEngine.transferInternalCoins(address(this), bids[id].highBidder, bids[id].bidAmount);
+            if (bids[id].highBidder != address(0)) // not first bid
+                safeEngine.transferInternalCoins(address(this), bids[id].highBidder, bids[id].bidAmount);
 
             bids[id].highBidder = msg.sender;
         }
@@ -326,9 +327,7 @@ contract StakedTokenAuctionHouse {
         activeStakedTokenAuctions = subtract(activeStakedTokenAuctions, 1);
 
         // send the system coin bid back to the high bidder in case there was at least one bid
-        if (bids[id].bidExpiry != 0) {
-          safeEngine.transferInternalCoins(address(this), bids[id].highBidder, bids[id].bidAmount);
-        }
+        safeEngine.transferInternalCoins(address(this), bids[id].highBidder, bids[id].bidAmount);
 
         // send the staked tokens to the token burner
         stakedToken.transferFrom(address(this), tokenBurner, bids[id].amountToSell);
