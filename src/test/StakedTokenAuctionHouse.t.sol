@@ -288,7 +288,6 @@ contract StakedTokenAuctionHouseTest is DSTest {
 
     function test_increase_bid_size() public {
         auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
-        // previousAccountingEngineBalance = safeEngine.
         (uint256 bidAmount, uint256 amountToSell, address highBidder, uint48 bidExpiry, uint48 auctionDeadline) =
                 auctionHouse.bids(1);
 
