@@ -1,4 +1,4 @@
-/// StakedTokenAuctionHouse.sol
+/// ProtocolTokenLenderFirstResort.sol
 
 // Copyright (C) 2021 Reflexer Labs, INC
 //
