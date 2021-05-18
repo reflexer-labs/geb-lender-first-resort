@@ -93,7 +93,7 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     uint256   public exitDelay;
     // Time during which an address can exit without requesting a new window
     uint256   public exitWindow;
-    // Min maount of ancestor tokens that must remain in the contract and not be auctioned
+    // Min amount of ancestor tokens that must remain in the contract and not be auctioned
     uint256   public minStakedTokensToKeep;
     // Max number of auctions that can be active at a time
     uint256   public maxConcurrentAuctions;
