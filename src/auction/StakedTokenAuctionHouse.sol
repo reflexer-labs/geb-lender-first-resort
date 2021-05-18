@@ -126,7 +126,9 @@ contract StakedTokenAuctionHouse {
     event DisableContract(address sender);
 
     // --- Init ---
-    constructor(address safeEngine_, address stakedToken_) public {
+    constructor(address safeEngine_, address stakedToken_) public { // add accountingEngine?
+        require(safeEngine_ != address(0x0), "StakedTokenAuctionHouse/invalid_safe_engine");
+        require(stakedToken_ != address(0x0), "StakedTokenAuctionHouse/invalid_token");
         authorizedAccounts[msg.sender] = 1;
         safeEngine      = SAFEEngineLike(safeEngine_);
         stakedToken     = TokenLike(stakedToken_);
@@ -310,7 +312,6 @@ contract StakedTokenAuctionHouse {
     */
     function disableContract() external isAuthorized {
         contractEnabled  = 0;
-        accountingEngine = msg.sender;
         emit DisableContract(msg.sender);
     }
     /**

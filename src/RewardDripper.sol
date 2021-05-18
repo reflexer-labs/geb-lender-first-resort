@@ -78,13 +78,15 @@ contract RewardDripper {
 
         authorizedAccounts[msg.sender] = 1;
 
-        rewardPerBlock = rewardPerBlock_;
-        requestor      = requestor_;
-        rewardToken    = TokenLike(rewardToken_);
+        rewardPerBlock  = rewardPerBlock_;
+        requestor       = requestor_;
+        rewardToken     = TokenLike(rewardToken_);
+        lastRewardBlock = block.number;
 
         emit AddAuthorization(msg.sender);
         emit ModifyParameters("rewardPerBlock", rewardPerBlock);
         emit ModifyParameters("requestor", requestor);
+        emit ModifyParameters("lastRewardBlock", lastRewardBlock);
     }
 
     // --- Math ---
