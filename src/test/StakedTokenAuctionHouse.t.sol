@@ -210,7 +210,7 @@ contract StakedTokenAuctionHouseTest is DSTest {
 
     function test_start_auction() public {
         assertEq(auctionHouse.auctionsStarted(), 1);
-        (uint256 bidAmount, uint256 amountToSell, address highBidder, uint48  bidExpiry, uint48  auctionDeadline) =
+        (uint256 bidAmount, uint256 amountToSell, address highBidder,, uint48  auctionDeadline) =
                 auctionHouse.bids(1);
 
         assertEq(amountToSell, 10 ether);
@@ -262,7 +262,7 @@ contract StakedTokenAuctionHouseTest is DSTest {
 
         auctionHouse.restartAuction(1);
 
-        (uint256 bidAmount, uint256 amountToSell, address highBidder, uint48  bidExpiry, uint48  auctionDeadline) =
+        (uint256 bidAmount,,,, uint48  auctionDeadline) =
                 auctionHouse.bids(1);
 
         assertEq(bidAmount, 95 ether);
@@ -288,7 +288,6 @@ contract StakedTokenAuctionHouseTest is DSTest {
 
     function test_increase_bid_size() public {
         auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
-        // previousAccountingEngineBalance = safeEngine.
         (uint256 bidAmount, uint256 amountToSell, address highBidder, uint48 bidExpiry, uint48 auctionDeadline) =
                 auctionHouse.bids(1);
 

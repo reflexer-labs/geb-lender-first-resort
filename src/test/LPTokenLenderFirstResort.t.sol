@@ -2,7 +2,8 @@ pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
 import "ds-token/token.sol";
-import "../ProtocolTokenLenderFirstResort.sol";
+import "../LPTokenLenderFirstResort.sol";
+import {RewardDripper} from "../RewardDripper.sol";
 
 abstract contract Hevm {
     function warp(uint) virtual public;
@@ -11,8 +12,14 @@ abstract contract Hevm {
 
 contract AuctionHouseMock {
     uint public activeStakedTokenAuctions;
+    DSToken public tokenToAuction;
 
-    function startAuction(uint256, uint256) virtual external returns (uint256) {
+    constructor(address tokenToAuction_) public {
+        tokenToAuction = DSToken(tokenToAuction_);
+    }
+
+    function startAuction(uint256 tokensToAuction, uint256) external returns (uint256) {
+        tokenToAuction.transferFrom(msg.sender, address(this), tokensToAuction);
         return activeStakedTokenAuctions++;
     }
 }
@@ -37,18 +44,11 @@ contract SAFEEngineMock {
         else revert("unrecognized param");
     }
 }
-contract RewardDripperMock {
-    uint public drips;
-
-    function dripReward() external {
-        drips++;
-    }
-}
 
 contract Caller {
-    ProtocolTokenLenderFirstResort stakingPool;
+    LPTokenLenderFirstResort stakingPool;
 
-    constructor (ProtocolTokenLenderFirstResort add) public {
+    constructor (LPTokenLenderFirstResort add) public {
         stakingPool = add;
     }
 
@@ -67,17 +67,36 @@ contract Caller {
     function doRemoveAuthorization(address data) public {
         stakingPool.removeAuthorization(data);
     }
+
+    function doGetRewards() public {
+        stakingPool.getRewards();
+    }
+
+    function doJoin(uint wad) public {
+        stakingPool.ancestor().approve(address(stakingPool), uint(-1));
+        stakingPool.join(wad);
+    }
+
+    function doRequestExit() public {
+        stakingPool.requestExit();
+    }
+
+    function doExit(uint wad) public {
+        stakingPool.descendant().approve(address(stakingPool), uint(-1));
+        stakingPool.exit(wad);
+    }
 }
 
-contract ProtocolTokenLenderFirstResortTest is DSTest {
+contract LPTokenLenderFirstResortTest is DSTest {
     Hevm hevm;
+    DSToken rewardToken;
     DSToken ancestor;
     DSToken descendant;
-    ProtocolTokenLenderFirstResort stakingPool;
+    LPTokenLenderFirstResort stakingPool;
     AuctionHouseMock auctionHouse;
     AccountingEngineMock accountingEngine;
     SAFEEngineMock safeEngine;
-    RewardDripperMock rewardDripper;
+    RewardDripper rewardDripper;
     Caller unauth;
 
     uint maxDelay = 48 weeks;
@@ -95,14 +114,19 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         hevm.roll(1);
         hevm.warp(100000001);
 
-        ancestor = new DSToken("PROT", "PROT");
+        rewardToken = new DSToken("PROT", "PROT");
+        ancestor = new DSToken("LP", "LP");
         descendant = new DSToken("POOL", "POOL");
-        auctionHouse = new AuctionHouseMock();
+        auctionHouse = new AuctionHouseMock(address(ancestor));
         accountingEngine = new AccountingEngineMock();
         safeEngine = new SAFEEngineMock();
-        rewardDripper = new RewardDripperMock();
+        rewardDripper = new RewardDripper(
+            address(this),        // requestor
+            address(rewardToken),
+            1 ether               // rewardPerBlock
+        );
 
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -119,11 +143,11 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
             systemCoinsToRequest
         );
 
-        ancestor.mint(address(this), 10000000 ether);
-        descendant.setOwner(address(stakingPool));
+        rewardDripper.modifyParameters("requestor", address(stakingPool));
+        rewardToken.mint(address(rewardDripper), 10000000 ether);
 
-        emit log_named_uint("now", now);
-        emit log_named_uint("block no", block.number);
+        ancestor.mint(address(this), 1000000000 ether);
+        descendant.setOwner(address(stakingPool));
         unauth = new Caller(stakingPool);
     }
 
@@ -132,6 +156,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         assertEq(address(stakingPool.descendant()), address(descendant));
         assertEq(address(stakingPool.auctionHouse()), address(auctionHouse));
         assertEq(address(stakingPool.rewardDripper()), address(rewardDripper));
+        assertEq(address(stakingPool.rewardToken()), address(rewardToken));
         assertEq(stakingPool.MAX_DELAY(), maxDelay);
         assertEq(stakingPool.MIN_EXIT_WINDOW(), minExitWindow);
         assertEq(stakingPool.MAX_EXIT_WINDOW(), maxExitWindow);
@@ -146,7 +171,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_maxDelay() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -164,8 +189,27 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         );
     }
 
+    function testFail_setup_same_ancestor_rewards_tokens() public {
+        stakingPool = new LPTokenLenderFirstResort(
+            address(rewardToken),
+            address(descendant),
+            address(auctionHouse),
+            address(accountingEngine),
+            address(safeEngine),
+            address(rewardDripper),
+            maxDelay,
+            minExitWindow,
+            0,
+            exitDelay,
+            exitWindow,
+            minStakedTokensToKeep,
+            tokensToAuction,
+            systemCoinsToRequest
+        );
+    }
+
     function testFail_setup_invalid_maxExitWindow() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -184,7 +228,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_maxExitWindow2() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -203,7 +247,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_minExitWindow() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -222,7 +266,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_exitWindow() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -241,7 +285,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_exitWindow2() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -260,7 +304,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_minStakedTokensToKeep() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -279,7 +323,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_tokensToAuction() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -298,7 +342,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_systemCoinsToRequest() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -317,7 +361,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_auctionHouse() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(0),
@@ -336,7 +380,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_accountingEngine() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -355,7 +399,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_safeEngine() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -374,7 +418,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_rewardsDripper() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
@@ -497,7 +541,6 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
 
         assertEq(ancestor.balanceOf(address(stakingPool)), amount);
         assertEq(descendant.balanceOf(address(this)),price);
-        assertEq(rewardDripper.drips(), 1);
     }
 
     function testFail_join_invalid_ammount() public {
@@ -682,17 +725,37 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function test_auction_ancestor_tokens() public {
-        uint amount = 10000 ether;
+        uint amount = 1000 ether;
         // join
         ancestor.approve(address(stakingPool), amount);
         stakingPool.join(amount);
 
         accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
 
+        uint previousDescendantBalance = descendant.balanceOf(address(this));
+
         // auction
         stakingPool.auctionAncestorTokens();
 
         assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
+        assertEq(descendant.balanceOf(address(this)), previousDescendantBalance);
+        assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
+
+        // exiting (after slash)
+        stakingPool.requestExit();
+        hevm.warp(now + exitDelay);
+        hevm.roll(block.number + 32); // 32 blocks
+        descendant.approve(address(stakingPool), uint(-1));
+        uint256 price = stakingPool.exitPrice(amount);
+
+        uint previousBalance = ancestor.balanceOf(address(this));
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 90 ether); // above water
+
+        stakingPool.exit(amount);
+        assertEq(ancestor.balanceOf(address(this)), previousBalance + price);
+        assertEq(descendant.balanceOf(address(this)), 0);
+        assertEq(rewardToken.balanceOf(address(this)), 32 ether); // 1 eth per block
     }
 
     function testFail_auction_ancestor_tokens_abovewater() public {
@@ -716,5 +779,235 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
 
         // auction
         stakingPool.auctionAncestorTokens();
+    }
+
+    ////////////////// Rewards (WIP) //////////////////
+    function test_exit_rewards_1(uint amount, uint blockDelay) public {
+        amount = amount % 10**24 + 1; // up to 1mm staked
+        blockDelay = blockDelay % 100 + 1; // up to 1000 blocks
+        // join
+        ancestor.approve(address(stakingPool), uint(-1));
+        stakingPool.join(amount);
+
+        // request exit
+        stakingPool.requestExit();
+
+        // exit
+        hevm.warp(now + exitDelay);
+        hevm.roll(block.number + blockDelay); // will drip 10 eth
+        descendant.approve(address(stakingPool), uint(-1));
+        uint256 price = stakingPool.exitPrice(amount);
+
+        uint previousBalance = ancestor.balanceOf(address(this));
+
+        stakingPool.exit(amount);
+        assertEq(ancestor.balanceOf(address(this)), previousBalance + price);
+        assertEq(descendant.balanceOf(address(this)), 0);
+        assertTrue(rewardToken.balanceOf(address(this)) >= blockDelay * 1 ether - 1); // 1 eth per block
+    }
+
+    function test_exit_rewards_2_users(uint amount) public {
+        amount = amount % 10**24 + 1; // non null up to 1mm
+        Caller user1 = new Caller(stakingPool);
+        ancestor.transfer(address(user1), amount);
+        Caller user2 = new Caller(stakingPool);
+        ancestor.transfer(address(user2), amount);
+
+        // join
+        user1.doJoin(amount);
+        user2.doJoin(amount);
+
+        // request exit
+        user1.doRequestExit();
+        user2.doRequestExit();
+
+        // exit
+        hevm.warp(now + exitDelay);
+        hevm.roll(block.number + 32); // 32 blocks
+
+        user1.doExit(amount);
+        user2.doExit(amount);
+        assertTrue(rewardToken.balanceOf(address(user1)) >= 16 ether -1); // .5 eth per block
+        assertTrue(rewardToken.balanceOf(address(user2)) >= 16 ether -1); // .5 eth per block
+    }
+
+    function test_get_rewards() public {
+        uint amount = 10 ether;
+
+        hevm.roll(block.number + 10);
+
+        stakingPool.updatePool(); // no effect
+
+        // join
+        ancestor.approve(address(stakingPool), uint(-1));
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 10); // 10 blocks
+
+        stakingPool.getRewards();
+        assertEq(rewardToken.balanceOf(address(this)), 20 ether); // 1 eth per block
+
+        hevm.roll(block.number + 8); // 8 blocks
+
+        stakingPool.getRewards();
+        assertTrue(rewardToken.balanceOf(address(this)) >= 28 ether - 1); // 1 eth per block, division rounding causes a slight loss of precision
+    }
+
+    function test_rewards_after_slashing() public {
+        uint amount = 1000 ether;
+        // join
+        ancestor.approve(address(stakingPool), amount);
+        stakingPool.join(amount);
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+
+        uint previousDescendantBalance = descendant.balanceOf(address(this));
+
+        // auction
+        stakingPool.auctionAncestorTokens();
+
+        assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
+        assertEq(descendant.balanceOf(address(this)), previousDescendantBalance);
+        assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
+
+        // exiting (after slash)
+        stakingPool.requestExit();
+        hevm.warp(now + exitDelay);
+        hevm.roll(block.number + 32); // 32 blocks
+        descendant.approve(address(stakingPool), uint(-1));
+        uint256 price = stakingPool.exitPrice(amount);
+
+        uint previousBalance = ancestor.balanceOf(address(this));
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 90 ether); // above water
+
+        stakingPool.exit(amount);
+        assertEq(ancestor.balanceOf(address(this)), previousBalance + price);
+        assertEq(descendant.balanceOf(address(this)), 0);
+        assertEq(rewardToken.balanceOf(address(this)), 32 ether); // 1 eth per block
+    }
+
+    function test_rewards_dripper_depleated() public {
+        uint amount = 7 ether;
+        // leave rewards only for 20 blocks
+        rewardDripper.transferTokenOut(address(0xfab), rewardToken.balanceOf(address(rewardDripper)) - 20 ether);
+
+        ancestor.approve(address(stakingPool), amount);
+        stakingPool.join(amount);
+
+        stakingPool.requestExit();
+        hevm.warp(now + exitDelay);
+        hevm.roll(block.number + 32); // 32 blocks
+        descendant.approve(address(stakingPool), uint(-1));
+
+        stakingPool.exit(amount);
+        assertEq(descendant.balanceOf(address(this)), 0);
+        assertTrue(rewardToken.balanceOf(address(this)) >= 20 ether - 1); // full amount
+    }
+
+    function test_rewards_dripper_depleated_recharged() public {
+        uint amount = 7 ether;
+        // leave rewards only for 20 blocks
+        rewardDripper.transferTokenOut(address(0xfab), rewardToken.balanceOf(address(rewardDripper)) - 20 ether);
+
+        ancestor.approve(address(stakingPool), amount);
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 32); // 32 blocks
+        stakingPool.getRewards();
+        assertTrue(rewardToken.balanceOf(address(this)) >= 20 ether - 1); // full amount
+
+        hevm.roll(block.number + 32); // 32 blocks
+
+        rewardToken.mint(address(rewardDripper), 5 ether);
+        stakingPool.getRewards();
+        assertTrue(rewardToken.balanceOf(address(this)) >= 25 ether - 1);
+    }
+
+    function test_rewards_change_dripper_emission() public {
+        uint amount = 23 ether;
+
+        ancestor.approve(address(stakingPool), amount);
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 32); // 32 blocks
+        stakingPool.getRewards();
+        assertTrue(rewardToken.balanceOf(address(this)) >= 32 ether - 1); // full amount
+
+        rewardDripper.modifyParameters("rewardPerBlock", 0.5 ether);
+        hevm.roll(block.number + 32); // 32 blocks
+
+        stakingPool.getRewards();
+        assertTrue(rewardToken.balanceOf(address(this)) >= 48 ether - 1);
+    }
+
+    function test_deposit_rewards() public {
+        uint amount = 23 ether;
+
+        ancestor.approve(address(stakingPool), amount * 3);
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 32); // 32 blocks
+        stakingPool.join(amount);
+        assertTrue(rewardToken.balanceOf(address(this)) >= 32 ether - 1); // full amount
+
+        hevm.roll(block.number + 32); // 32 blocks
+
+        stakingPool.join(amount);
+        assertTrue(rewardToken.balanceOf(address(this)) >= 64 ether - 1);
+    }
+
+    function test_multi_user_diff_proportions() public {
+        uint amount = 3.14 ether;
+        Caller user1 = new Caller(stakingPool);
+        ancestor.transfer(address(user1), amount);
+        Caller user2 = new Caller(stakingPool);
+        ancestor.transfer(address(user2), amount);
+        Caller user3 = new Caller(stakingPool);
+        ancestor.transfer(address(user3), amount * 2);
+
+        // users 1 & 2 join, same amount
+        user1.doJoin(amount);
+        user2.doJoin(amount);
+
+        hevm.roll(block.number + 12); // 12 blocks
+
+        // users 3 joins, with double amount
+        user3.doJoin(amount * 2);
+        user1.doGetRewards();
+        user2.doGetRewards();
+        assertTrue(rewardToken.balanceOf(address(user1)) >= 6 ether -1);
+        assertTrue(rewardToken.balanceOf(address(user2)) >= 6 ether -1);
+        assertTrue(rewardToken.balanceOf(address(user3)) == 0);          // no rewards yet
+
+        // users 1 exits the pool
+        user1.doRequestExit();
+        hevm.warp(now + exitDelay);
+        hevm.roll(block.number + 12); // 12 blocks
+
+        user1.doExit(amount);
+        user2.doGetRewards();
+        user3.doGetRewards();
+        assertTrue(rewardToken.balanceOf(address(user1)) >= 9 ether -1);
+        assertTrue(rewardToken.balanceOf(address(user2)) >= 9 ether -1);
+        assertTrue(rewardToken.balanceOf(address(user3)) >= 6 ether -1);
+
+        // user 1 rejoins
+        hevm.roll(block.number + 12); // 12 blocks
+        user1.doJoin(amount);
+        user2.doGetRewards();
+        user3.doGetRewards();
+        assertTrue(rewardToken.balanceOf(address(user1)) >= 9 ether -1);
+        assertTrue(rewardToken.balanceOf(address(user2)) >= 13 ether -1);
+        assertTrue(rewardToken.balanceOf(address(user3)) >= 14 ether -1);
+
+        // all onboard
+        hevm.roll(block.number + 12); // 12 blocks
+        user1.doGetRewards();
+        user2.doGetRewards();
+        user3.doGetRewards();
+        assertTrue(rewardToken.balanceOf(address(user1)) >= 12 ether -1);
+        assertTrue(rewardToken.balanceOf(address(user2)) >= 16 ether -1);
+        assertTrue(rewardToken.balanceOf(address(user3)) >= 20 ether -1);
     }
 }
