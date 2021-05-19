@@ -111,7 +111,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function setUp() public {
         hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
 
-        hevm.roll(1);
+        hevm.roll(5000000);
         hevm.warp(100000001);
 
         rewardToken = new DSToken("PROT", "PROT");
@@ -740,22 +740,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
         assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
         assertEq(descendant.balanceOf(address(this)), previousDescendantBalance);
         assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
-
-        // exiting (after slash)
-        stakingPool.requestExit();
-        hevm.warp(now + exitDelay);
-        hevm.roll(block.number + 32); // 32 blocks
-        descendant.approve(address(stakingPool), uint(-1));
-        uint256 price = stakingPool.exitPrice(amount);
-
-        uint previousBalance = ancestor.balanceOf(address(this));
-
-        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 90 ether); // above water
-
-        stakingPool.exit(amount);
-        assertEq(ancestor.balanceOf(address(this)), previousBalance + price);
-        assertEq(descendant.balanceOf(address(this)), 0);
-        assertEq(rewardToken.balanceOf(address(this)), 32 ether); // 1 eth per block
     }
 
     function testFail_auction_ancestor_tokens_abovewater() public {
@@ -887,6 +871,49 @@ contract LPTokenLenderFirstResortTest is DSTest {
         assertEq(rewardToken.balanceOf(address(this)), 32 ether); // 1 eth per block
     }
 
+    function assertAlmostEqual(uint a, uint b, uint p) public {
+        uint v = a - (a / 10**p);
+        assertTrue(b >= a - v && b <= a + v);
+    }
+
+    function test_slashing_2_users() public {
+        uint amount = 513 ether;
+        Caller user1 = new Caller(stakingPool);
+        ancestor.transfer(address(user1), amount);
+        Caller user2 = new Caller(stakingPool);
+        ancestor.transfer(address(user2), amount);
+
+        uint previousBalance1 = ancestor.balanceOf(address(user1));
+        uint previousBalance2 = ancestor.balanceOf(address(user2));
+
+        // join
+        user1.doJoin(amount);
+        user2.doJoin(amount);
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+
+        // auction
+        stakingPool.auctionAncestorTokens();
+
+        assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
+        assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
+
+        // exiting (after slash)
+        user1.doRequestExit();
+        user2.doRequestExit();
+        hevm.warp(now + exitDelay);
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 90 ether); // above water
+
+        user1.doExit(amount);
+        user2.doExit(amount);
+
+        assertAlmostEqual(ancestor.balanceOf(address(user1)), previousBalance1 - 50 ether, 1);
+        assertEq(descendant.balanceOf(address(user1)), 0);
+        assertAlmostEqual(ancestor.balanceOf(address(user2)), previousBalance2 - 50 ether, 1);
+        assertEq(descendant.balanceOf(address(user2)), 0);
+    }
+
     function test_rewards_dripper_depleated() public {
         uint amount = 7 ether;
         // leave rewards only for 20 blocks
@@ -1009,5 +1036,36 @@ contract LPTokenLenderFirstResortTest is DSTest {
         assertTrue(rewardToken.balanceOf(address(user1)) >= 12 ether -1);
         assertTrue(rewardToken.balanceOf(address(user2)) >= 16 ether -1);
         assertTrue(rewardToken.balanceOf(address(user3)) >= 20 ether -1);
+    }
+
+    function test_rewards_over_long_intervals() public {
+        uint amount = 3.14 ether;
+        Caller user1 = new Caller(stakingPool);
+        ancestor.transfer(address(user1), amount);
+        Caller user2 = new Caller(stakingPool);
+        ancestor.transfer(address(user2), amount);
+
+        // users 1 & 2 join, same amount
+        user1.doJoin(amount);
+        hevm.roll(block.number + 1000000); // 1mm blocks
+
+        user2.doJoin(amount);
+        hevm.roll(block.number + 1); // 1 block
+
+        user1.doGetRewards();
+        user2.doGetRewards();
+        assertTrue(rewardToken.balanceOf(address(user1)) >= 1000000.5 ether - 1);
+        assertTrue(rewardToken.balanceOf(address(user1)) <= 1000000.5 ether);
+        assertTrue(rewardToken.balanceOf(address(user2)) >= 0.5 ether - 1);
+        assertTrue(rewardToken.balanceOf(address(user2)) <= 0.5 ether);
+
+        hevm.roll(block.number + 1); // 1 block
+
+        user1.doGetRewards();
+        user2.doGetRewards();
+        assertTrue(rewardToken.balanceOf(address(user1)) >= 1000001 ether - 1);
+        assertTrue(rewardToken.balanceOf(address(user1)) <= 1000001 ether);
+        assertTrue(rewardToken.balanceOf(address(user2)) >= 1 ether - 1);
+        assertTrue(rewardToken.balanceOf(address(user2)) <= 1 ether);
     }
 }
