@@ -109,9 +109,9 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     // Exit data
     mapping(address => ExitWindow) public exitWindows;
 
-    // the amount of tokens inneligible for claim, see formula below
+    // The amount of tokens inneligible for claim, see formula below
     mapping(address => uint256) internal rewardDebt;
-    // pending reward = (descendant.balanceOf(user) * accTokensPerShare) - rewardDebt[user]
+    // Pending reward = (descendant.balanceOf(user) * accTokensPerShare) - rewardDebt[user]
 
     // The token being deposited in the pool
     TokenLike            public ancestor;
@@ -178,7 +178,6 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
         require(accountingEngine_ != address(0), "ProtocolTokenLenderFirstResort/null-accounting-engine");
         require(safeEngine_ != address(0), "ProtocolTokenLenderFirstResort/null-safe-engine");
         require(rewardDripper_ != address(0), "ProtocolTokenLenderFirstResort/null-reward-dripper");
-
 
         authorizedAccounts[msg.sender] = 1;
         canJoin                        = true;
@@ -388,16 +387,15 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     // --- Core Logic ---
 
     /*
-    * @notify Updates pool and pay rewards (if any)
-    * @notice Must be included in deposits and withdrawals
+    * @notify Updates the pool and pays rewards (if any)
+    * @dev Must be included in deposits and withdrawals
     */
     modifier payRewards() {
-        // updates pool
+        // Updates the pool
         updatePool();
 
         if (descendant.balanceOf(msg.sender) > 0 && rewardToken.balanceOf(address(this)) > 0) {
-
-            // pays reward
+            // Pays the reward
             uint256 pending = subtract(multiply(descendant.balanceOf(msg.sender), accTokensPerShare) / RAY, rewardDebt[msg.sender]);
             rewardToken.transferFrom(address(this), msg.sender, pending);
             emit RewardsPaid(msg.sender, pending);
@@ -426,7 +424,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
         rewardDripper.dripReward();
         uint256 increaseInBalance = rewardToken.balanceOf(address(this)) - prevBalance;
 
-        // updates distribution info
+        // Updates distribution info
         accTokensPerShare = addition(accTokensPerShare, multiply(increaseInBalance, RAY) / descendantSupply);
         emit PoolUpdated(accTokensPerShare, descendantSupply);
     }
