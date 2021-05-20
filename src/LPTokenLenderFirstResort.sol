@@ -43,9 +43,11 @@ abstract contract SAFEEngineLike {
 }
 abstract contract RewardDripperLike {
     function dripReward() virtual external;
+    function rewardPerBlock() virtual external returns (uint256);
+    function rewardToken() virtual external returns (TokenLike);
 }
 
-contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
+contract LPTokenLenderFirstResort is ReentrancyGuard {
     // --- Auth ---
     mapping (address => uint) public authorizedAccounts;
     /**
@@ -101,14 +103,22 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     uint256   public tokensToAuction;
     // Initial amount of system coins to request in exchange for tokensToAuction
     uint256   public systemCoinsToRequest;
+    // Amount of rewards per share accumulated (total, see rewardDebt for more info)
+    uint256   public accTokensPerShare;
 
     // Exit data
     mapping(address => ExitWindow) public exitWindows;
+
+    // the amount of tokens inneligible for claim, see formula below
+    mapping(address => uint256) internal rewardDebt;
+    // pending reward = (descendant.balanceOf(user) * accTokensPerShare) - rewardDebt[user]
 
     // The token being deposited in the pool
     TokenLike            public ancestor;
     // The token being backed by ancestor tokens
     TokenLike            public descendant;
+    // The token used to pay rewards
+    TokenLike            public rewardToken;
     // Auction house for staked tokens
     AuctionHouseLike     public auctionHouse;
     // Accounting engine contract
@@ -137,6 +147,8 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     event RequestExit(address indexed account, uint256 start, uint256 end);
     event Join(address indexed account, uint256 price, uint256 amount);
     event Exit(address indexed account, uint256 price, uint256 amount);
+    event RewardsPaid(address account, uint256 amount);
+    event PoolUpdated(uint256 accTokensPerShare, uint256 descendantSupply);
 
     constructor(
       address ancestor_,
@@ -167,6 +179,7 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         require(safeEngine_ != address(0), "ProtocolTokenLenderFirstResort/null-safe-engine");
         require(rewardDripper_ != address(0), "ProtocolTokenLenderFirstResort/null-reward-dripper");
 
+
         authorizedAccounts[msg.sender] = 1;
         canJoin                        = true;
         maxConcurrentAuctions          = uint(-1);
@@ -189,6 +202,11 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
 
         ancestor                       = TokenLike(ancestor_);
         descendant                     = TokenLike(descendant_);
+        rewardToken                    = TokenLike(rewardDripper.rewardToken());
+
+        require(ancestor_ != address(rewardToken), "ProtocolTokenLenderFirstResort/invalid-ancestor-reward-tokens");
+
+        lastRewardBlock                = block.number;
 
         require(ancestor.decimals() == 18, "ProtocolTokenLenderFirstResort/ancestor-decimal-mismatch");
         require(descendant.decimals() == 18, "ProtocolTokenLenderFirstResort/descendant-decimal-mismatch");
@@ -206,9 +224,13 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
 
     // --- Math ---
     uint256 public constant WAD = 10 ** 18;
+    uint256 public constant RAY = 10 ** 27;
 
     function addition(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x, "ProtocolTokenLenderFirstResort/add-overflow");
+    }
+    function subtract(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "ProtocolTokenLenderFirstResort/sub-underflow");
     }
     function multiply(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x, "ProtocolTokenLenderFirstResort/mul-overflow");
@@ -364,13 +386,49 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     }
 
     // --- Core Logic ---
+
     /*
-    * @notify Pull ancestor token rewards from the dripper
+    * @notify Updates pool and pay rewards (if any)
+    * @notice Must be included in deposits and withdrawals
     */
-    function pullReward() public {
-        if (either(block.number == lastRewardBlock, protocolUnderwater())) return;
+    modifier payRewards() {
+        // updates pool
+        updatePool();
+
+        if (descendant.balanceOf(msg.sender) > 0 && rewardToken.balanceOf(address(this)) > 0) {
+
+            // pays reward
+            uint256 pending = subtract(multiply(descendant.balanceOf(msg.sender), accTokensPerShare) / RAY, rewardDebt[msg.sender]);
+            rewardToken.transferFrom(address(this), msg.sender, pending);
+            emit RewardsPaid(msg.sender, pending);
+        }
+        _;
+        rewardDebt[msg.sender] = multiply(descendant.balanceOf(msg.sender), accTokensPerShare) / RAY;
+    }
+
+    /*
+    * @notify Pays outstanding rewards to msg.sender
+    */
+    function getRewards() external nonReentrant payRewards {}
+
+    /*
+    * @notify Updates pool data
+    */
+    function updatePool() public {
+        if (block.number <= lastRewardBlock) return;
+
         lastRewardBlock = block.number;
+
+        uint256 descendantSupply = descendant.totalSupply();
+        if (descendantSupply == 0) return;
+
+        uint256 prevBalance = rewardToken.balanceOf(address(this));
         rewardDripper.dripReward();
+        uint256 increaseInBalance = rewardToken.balanceOf(address(this)) - prevBalance;
+
+        // updates distribution info
+        accTokensPerShare = addition(accTokensPerShare, multiply(increaseInBalance, RAY) / descendantSupply);
+        emit PoolUpdated(accTokensPerShare, descendantSupply);
     }
 
     /*
@@ -382,6 +440,8 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         ancestor.approve(address(auctionHouse), tokensToAuction);
         auctionHouse.startAuction(tokensToAuction, systemCoinsToRequest);
 
+        updatePool();
+
         emit AuctionAncestorTokens(address(auctionHouse), tokensToAuction, systemCoinsToRequest);
     }
 
@@ -389,7 +449,7 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     * @notify Join ancestor tokens in exchange for descendant tokens
     * @param wad The amount of ancestor tokens to join
     */
-    function join(uint256 wad) public {
+    function join(uint256 wad) external nonReentrant payRewards {
         require(both(canJoin, !protocolUnderwater()), "ProtocolTokenLenderFirstResort/join-not-allowed");
         require(wad > 0, "ProtocolTokenLenderFirstResort/null-ancestor-to-join");
 
@@ -399,14 +459,12 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         require(ancestor.transferFrom(msg.sender, address(this), wad), "ProtocolTokenLenderFirstResort/could-not-transfer-ancestor");
         descendant.mint(msg.sender, price);
 
-        pullReward();
-
         emit Join(msg.sender, price, wad);
     }
     /*
     * @notice Request a new exit window during which you can burn descendant tokens in exchange for ancestor tokens
     */
-    function requestExit() public {
+    function requestExit() external {
         require(now > exitWindows[msg.sender].end, "ProtocolTokenLenderFirstResort/ongoing-request");
         exitWindows[msg.sender].start = addition(now, exitDelay);
         exitWindows[msg.sender].end   = addition(exitWindows[msg.sender].start, exitWindow);
@@ -416,7 +474,7 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     * @notify Burn descendant tokens in exchange for getting ancestor tokens from this contract
     * @param wad The amount of descendant tokens to exit/burn
     */
-    function exit(uint256 wad) public nonReentrant {
+    function exit(uint256 wad) external nonReentrant payRewards {
         require(wad > 0, "ProtocolTokenLenderFirstResort/null-descendant-to-burn");
         require(both(both(now >= exitWindows[msg.sender].start, now <= exitWindows[msg.sender].end), exitWindows[msg.sender].end > 0), "ProtocolTokenLenderFirstResort/not-in-window");
         require(either(!protocolUnderwater(), forcedExit), "ProtocolTokenLenderFirstResort/exit-not-allowed");
