@@ -105,6 +105,8 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     uint256   public systemCoinsToRequest;
     // Amount of rewards per share accumulated (total, see rewardDebt for more info)
     uint256   public accTokensPerShare;
+    // Balance of the rewards token in this contract since last update
+    uint256   public rewardsBalance;
 
     // Exit data
     mapping(address => ExitWindow) public exitWindows;
@@ -398,6 +400,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
             // Pays the reward
             uint256 pending = subtract(multiply(descendant.balanceOf(msg.sender), accTokensPerShare) / RAY, rewardDebt[msg.sender]);
             rewardToken.transferFrom(address(this), msg.sender, pending);
+            rewardsBalance = rewardToken.balanceOf(address(this));
             emit RewardsPaid(msg.sender, pending);
         }
         _;
@@ -410,6 +413,13 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     function getRewards() external nonReentrant payRewards {}
 
     /*
+    * @notify Pull funds from the dripper
+    */
+    function pullFunds() public {
+        rewardDripper.dripReward();
+    }
+
+    /*
     * @notify Updates pool data
     */
     function updatePool() public {
@@ -420,9 +430,9 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
         uint256 descendantSupply = descendant.totalSupply();
         if (descendantSupply == 0) return;
 
-        uint256 prevBalance = rewardToken.balanceOf(address(this));
-        rewardDripper.dripReward();
-        uint256 increaseInBalance = rewardToken.balanceOf(address(this)) - prevBalance;
+        pullFunds();
+        uint256 increaseInBalance = subtract(rewardToken.balanceOf(address(this)), rewardsBalance);
+        rewardsBalance = addition(rewardsBalance, increaseInBalance);
 
         // Updates distribution info
         accTokensPerShare = addition(accTokensPerShare, multiply(increaseInBalance, RAY) / descendantSupply);
