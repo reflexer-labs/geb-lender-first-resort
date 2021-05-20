@@ -1068,4 +1068,32 @@ contract LPTokenLenderFirstResortTest is DSTest {
         assertTrue(rewardToken.balanceOf(address(user2)) >= 1 ether - 1);
         assertTrue(rewardToken.balanceOf(address(user2)) <= 1 ether);
     }
+
+    function test_get_rewards_externally_funded() public {
+        uint amount = 10 ether;
+
+        hevm.roll(block.number + 10);
+
+        stakingPool.updatePool(); // no effect
+
+        // join
+        ancestor.approve(address(stakingPool), uint(-1));
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 10); // 10 blocks
+
+        rewardToken.mint(address(stakingPool), 10 ether); // manually filling up contract
+
+        stakingPool.getRewards();
+        assertEq(rewardToken.balanceOf(address(this)), 30 ether); // 1 eth per block + externally funded
+
+        hevm.roll(block.number + 4);
+        stakingPool.pullFunds(); // pulling rewards to conrtact without updating
+
+        hevm.roll(block.number + 4);
+        rewardToken.mint(address(stakingPool), 2 ether); // manually filling up contract
+
+        stakingPool.getRewards();
+        assertTrue(rewardToken.balanceOf(address(this)) >= 40 ether - 1); // 1 eth per block, division rounding causes a slight loss of precision
+    }
 }
