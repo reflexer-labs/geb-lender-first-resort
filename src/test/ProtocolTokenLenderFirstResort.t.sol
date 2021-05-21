@@ -597,7 +597,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_exit_null_amount() public {
-        uint amount = 0;
+        uint amount = 10 ether;
         // join
         ancestor.approve(address(stakingPool), amount);
         stakingPool.join(amount);
@@ -608,7 +608,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         // exit
         hevm.warp(now + exitDelay);
         descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
-        stakingPool.exit(amount);
+        stakingPool.exit(0);
     }
 
     function testFail_exit_after_window() public {
@@ -702,7 +702,6 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     function test_auction_ancestor_tokens() public {
         uint amount = 1000 ether;
         // join
-        uint previousBalance = ancestor.balanceOf(address(this));
         ancestor.approve(address(stakingPool), amount);
         stakingPool.join(amount);
 
