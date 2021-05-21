@@ -116,10 +116,6 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     mapping(address => uint256) public descendantBalanceOf;
     // Exit data
     mapping(address => ExitWindow) public exitWindows;
-<<<<<<< HEAD
-=======
-
->>>>>>> b68211cd412580bd56c17a39dfdb303e9a4685f2
     // The amount of tokens inneligible for claim, see formula below
     mapping(address => uint256) internal rewardDebt;
     // Pending reward = (descendant.balanceOf(user) * accTokensPerShare) - rewardDebt[user]
@@ -397,21 +393,14 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     * @dev Must be included in deposits and withdrawals
     */
     modifier payRewards() {
-<<<<<<< HEAD
+
         updatePool();
 
         if (descendantBalanceOf[msg.sender] > 0 && rewardToken.balanceOf(address(this)) > 0) {
 
             // Pays the reward
             uint256 pending = subtract(multiply(descendantBalanceOf[msg.sender], accTokensPerShare) / RAY, rewardDebt[msg.sender]);
-=======
-        // Updates the pool
-        updatePool();
 
-        if (descendant.balanceOf(msg.sender) > 0 && rewardToken.balanceOf(address(this)) > 0) {
-            // Pays the reward
-            uint256 pending = subtract(multiply(descendant.balanceOf(msg.sender), accTokensPerShare) / RAY, rewardDebt[msg.sender]);
->>>>>>> b68211cd412580bd56c17a39dfdb303e9a4685f2
             rewardToken.transferFrom(address(this), msg.sender, pending);
             rewardsBalance = rewardToken.balanceOf(address(this));
             emit RewardsPaid(msg.sender, pending);
