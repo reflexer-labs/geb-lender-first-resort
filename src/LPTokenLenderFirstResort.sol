@@ -80,7 +80,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
         uint256 start;
         // Exit window deadline
         uint256 end;
-        // Ancestor mount queued for exit
+        // Ancestor amount queued for exit
         uint256 lockedAmount;
     }
 
@@ -113,11 +113,11 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     uint256   public stakedSupply;
 
     // Balances (not affected by slashing)
-    mapping(address => uint256) public descendantBalanceOf;
+    mapping(address => uint256)    public descendantBalanceOf;
     // Exit data
     mapping(address => ExitWindow) public exitWindows;
-    // The amount of tokens inneligible for claim, see formula below
-    mapping(address => uint256) internal rewardDebt;
+    // The amount of tokens inneligible for claiming rewards (see formula below)
+    mapping(address => uint256)    internal rewardDebt;
     // Pending reward = (descendant.balanceOf(user) * accTokensPerShare) - rewardDebt[user]
 
     // The token being deposited in the pool
@@ -367,7 +367,8 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     }
 
     /*
-    * @notice Returns whether the pool can auction ancestor tokens
+    * @notice Burn descendant tokens in exchange for getting ancestor tokens from this contract
+    * @return Whether the pool can auction ancestor tokens
     */
     function canAuctionTokens() public view returns (bool) {
         return both(
@@ -387,17 +388,14 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     }
 
     // --- Core Logic ---
-
     /*
     * @notify Updates the pool and pays rewards (if any)
     * @dev Must be included in deposits and withdrawals
     */
     modifier payRewards() {
-
         updatePool();
 
         if (descendantBalanceOf[msg.sender] > 0 && rewardToken.balanceOf(address(this)) > 0) {
-
             // Pays the reward
             uint256 pending = subtract(multiply(descendantBalanceOf[msg.sender], accTokensPerShare) / RAY, rewardDebt[msg.sender]);
 
@@ -405,8 +403,10 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
             rewardsBalance = rewardToken.balanceOf(address(this));
             emit RewardsPaid(msg.sender, pending);
         }
+
         restake();
         _;
+
         rewardDebt[msg.sender] = multiply(descendantBalanceOf[msg.sender], accTokensPerShare) / RAY;
     }
 
@@ -453,7 +453,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     }
 
     /*
-    * @notify Join ancestor tokens in exchange for descendant tokens
+    * @notify Join ancestor tokens
     * @param wad The amount of ancestor tokens to join
     */
     function join(uint256 wad) external nonReentrant payRewards {
@@ -469,8 +469,8 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
         emit Join(msg.sender, price, wad);
     }
     /*
-    * @notice Request a new exit window during which you can burn descendant tokens in exchange for ancestor tokens
-    * @param wad The amount of descendant tokens to exit
+    * @notice Request an exit for a specific amount of ancestor tokens
+    * @param wad The amount of tokens to exit
     */
     function requestExit(uint wad) external nonReentrant payRewards {
         require(wad > 0, "ProtocolTokenLenderFirstResort/null-amount-to-exit");
@@ -485,7 +485,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
         emit RequestExit(msg.sender, exitWindows[msg.sender].start, exitWindows[msg.sender].end);
     }
     /*
-    * @notify Burn descendant tokens in exchange for getting ancestor tokens from this contract
+    * @notify Exit ancestor tokens
     */
     function exit() external {
         require(both(both(now >= exitWindows[msg.sender].start, now <= exitWindows[msg.sender].end), exitWindows[msg.sender].end > 0), "ProtocolTokenLenderFirstResort/not-in-window");
