@@ -210,6 +210,9 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     function addition(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x, "ProtocolTokenLenderFirstResort/add-overflow");
     }
+    function subtract(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "ProtocolTokenLenderFirstResort/sub-uint-uint-underflow");
+    }
     function multiply(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x, "ProtocolTokenLenderFirstResort/mul-overflow");
     }
@@ -336,10 +339,11 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     */
     function protocolUnderwater() public view returns (bool) {
         uint256 unqueuedUnauctionedDebt = accountingEngine.unqueuedUnauctionedDebt();
+        uint256 coinBalance             = safeEngine.coinBalance(address(accountingEngine));
 
-        return both(
+        both(
           accountingEngine.debtAuctionBidSize() <= unqueuedUnauctionedDebt,
-          safeEngine.coinBalance(address(accountingEngine)) < unqueuedUnauctionedDebt
+          coinBalance <= subtract(unqueuedUnauctionedDebt, accountingEngine.debtAuctionBidSize())
         );
     }
 

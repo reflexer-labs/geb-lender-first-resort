@@ -359,10 +359,11 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     */
     function protocolUnderwater() public view returns (bool) {
         uint256 unqueuedUnauctionedDebt = accountingEngine.unqueuedUnauctionedDebt();
+        uint256 coinBalance             = safeEngine.coinBalance(address(accountingEngine));
 
-        return both(
+        both(
           accountingEngine.debtAuctionBidSize() <= unqueuedUnauctionedDebt,
-          safeEngine.coinBalance(address(accountingEngine)) < unqueuedUnauctionedDebt
+          coinBalance <= subtract(unqueuedUnauctionedDebt, accountingEngine.debtAuctionBidSize())
         );
     }
 
