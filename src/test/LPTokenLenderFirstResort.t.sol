@@ -77,13 +77,12 @@ contract Caller {
         stakingPool.join(wad);
     }
 
-    function doRequestExit() public {
-        stakingPool.requestExit();
+    function doRequestExit(uint wad) public {
+        stakingPool.requestExit(wad);
     }
 
-    function doExit(uint wad) public {
-        stakingPool.descendant().approve(address(stakingPool), uint(-1));
-        stakingPool.exit(wad);
+    function doExit() public {
+        stakingPool.exit();
     }
 }
 
@@ -91,7 +90,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     Hevm hevm;
     DSToken rewardToken;
     DSToken ancestor;
-    DSToken descendant;
     LPTokenLenderFirstResort stakingPool;
     AuctionHouseMock auctionHouse;
     AccountingEngineMock accountingEngine;
@@ -116,7 +114,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
 
         rewardToken = new DSToken("PROT", "PROT");
         ancestor = new DSToken("LP", "LP");
-        descendant = new DSToken("POOL", "POOL");
         auctionHouse = new AuctionHouseMock(address(ancestor));
         accountingEngine = new AccountingEngineMock();
         safeEngine = new SAFEEngineMock();
@@ -128,7 +125,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
 
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -147,13 +143,11 @@ contract LPTokenLenderFirstResortTest is DSTest {
         rewardToken.mint(address(rewardDripper), 10000000 ether);
 
         ancestor.mint(address(this), 1000000000 ether);
-        descendant.setOwner(address(stakingPool));
         unauth = new Caller(stakingPool);
     }
 
     function test_setup() public {
         assertEq(address(stakingPool.ancestor()), address(ancestor));
-        assertEq(address(stakingPool.descendant()), address(descendant));
         assertEq(address(stakingPool.auctionHouse()), address(auctionHouse));
         assertEq(address(stakingPool.rewardDripper()), address(rewardDripper));
         assertEq(address(stakingPool.rewardToken()), address(rewardToken));
@@ -167,13 +161,13 @@ contract LPTokenLenderFirstResortTest is DSTest {
         assertEq(stakingPool.systemCoinsToRequest(), systemCoinsToRequest);
         assertEq(stakingPool.authorizedAccounts(address(this)), 1);
         assertEq(stakingPool.maxConcurrentAuctions(), uint(-1));
+        assertEq(stakingPool.stakedSupply(), 0);
         assertTrue(stakingPool.canJoin());
     }
 
     function testFail_setup_invalid_maxDelay() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -192,7 +186,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_same_ancestor_rewards_tokens() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(rewardToken),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -211,7 +204,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_maxExitWindow() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -230,7 +222,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_maxExitWindow2() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -249,7 +240,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_minExitWindow() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -268,7 +258,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_exitWindow() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -287,7 +276,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_exitWindow2() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -306,7 +294,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_minStakedTokensToKeep() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -325,7 +312,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_tokensToAuction() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -344,7 +330,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_systemCoinsToRequest() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -363,7 +348,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_auctionHouse() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(0),
             address(accountingEngine),
             address(safeEngine),
@@ -382,7 +366,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_accountingEngine() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(0),
             address(safeEngine),
@@ -401,7 +384,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_safeEngine() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(0),
@@ -420,7 +402,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_rewardsDripper() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
-            address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -540,7 +521,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.join(amount);
 
         assertEq(ancestor.balanceOf(address(stakingPool)), amount);
-        assertEq(descendant.balanceOf(address(this)),price);
+        assertEq(stakingPool.descendantBalanceOf(address(this)),price);
     }
 
     function testFail_join_invalid_ammount() public {
@@ -584,8 +565,8 @@ contract LPTokenLenderFirstResortTest is DSTest {
         ancestor.approve(address(stakingPool), 1 ether);
         stakingPool.join(1 ether);
 
-        stakingPool.requestExit();
-        (uint start, uint end) = stakingPool.exitWindows(address(this));
+        stakingPool.requestExit(1 ether);
+        (uint start, uint end, ) = stakingPool.exitWindows(address(this));
 
         assertEq(start, now + exitDelay);
         assertEq(end, now + exitDelay + exitWindow);
@@ -595,9 +576,9 @@ contract LPTokenLenderFirstResortTest is DSTest {
         ancestor.approve(address(stakingPool), 1 ether);
         stakingPool.join(1 ether);
 
-        stakingPool.requestExit();
+        stakingPool.requestExit(1 ether);
         hevm.warp(now + exitDelay + exitWindow); // one sec to go
-        stakingPool.requestExit();
+        stakingPool.requestExit(1 ether);
     }
 
     function test_exit() public {
@@ -607,33 +588,27 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.join(amount);
 
         // request exit
-        stakingPool.requestExit();
+        stakingPool.requestExit(amount);
 
         // exit
         hevm.warp(now + exitDelay);
-        descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
         uint256 price = stakingPool.exitPrice(amount);
 
         uint previousBalance = ancestor.balanceOf(address(this));
 
-        stakingPool.exit(amount);
+        stakingPool.exit();
         assertEq(ancestor.balanceOf(address(this)), previousBalance + price);
-        assertEq(descendant.balanceOf(address(this)), 0);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
     }
 
-    function testFail_exit_null_amount() public {
-        uint amount = 0;
+    function testFail_request_exit_null_amount() public {
+        uint amount = 12 ether;
         // join
         ancestor.approve(address(stakingPool), amount);
         stakingPool.join(amount);
 
         // request exit
-        stakingPool.requestExit();
-
-        // exit
-        hevm.warp(now + exitDelay);
-        descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
-        stakingPool.exit(amount);
+        stakingPool.requestExit(0);
     }
 
     function testFail_exit_after_window() public {
@@ -643,14 +618,13 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.join(amount);
 
         // request exit
-        stakingPool.requestExit();
+        stakingPool.requestExit(amount);
 
         // exit
-        (, uint end) = stakingPool.exitWindows(address(this));
+        (, uint end,) = stakingPool.exitWindows(address(this));
 
         hevm.warp(end + 1);
-        descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
-        stakingPool.exit(amount);
+        stakingPool.exit();
     }
 
     function testFail_exit_before_window() public {
@@ -660,14 +634,13 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.join(amount);
 
         // request exit
-        stakingPool.requestExit();
+        stakingPool.requestExit(amount);
 
         // exit
-        (uint start,) = stakingPool.exitWindows(address(this));
+        (uint start,,) = stakingPool.exitWindows(address(this));
 
         hevm.warp(start - 1);
-        descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
-        stakingPool.exit(amount);
+        stakingPool.exit();
     }
 
     function testFail_exit_no_request() public {
@@ -677,13 +650,12 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.join(amount);
 
         // does not request exit
-        // stakingPool.requestExit();
+        // stakingPool.requestExit(amount);
 
         // exit
         hevm.warp(now + exitDelay);
-        descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
 
-        stakingPool.exit(amount);
+        stakingPool.exit();
     }
 
     function testFail_exit_underwater() public {
@@ -693,15 +665,14 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.join(amount);
 
         // request exit
-        stakingPool.requestExit();
+        stakingPool.requestExit(amount);
 
         // exit
         hevm.warp(now + exitDelay);
-        descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
 
         accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
 
-        stakingPool.exit(amount);
+        stakingPool.exit();
     }
 
     function test_exit_forced_underwater() public {
@@ -711,17 +682,16 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.join(amount);
 
         // request exit
-        stakingPool.requestExit();
+        stakingPool.requestExit(amount);
 
         // exit
         hevm.warp(now + exitDelay);
-        descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
 
         accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
 
         stakingPool.toggleForcedExit();
 
-        stakingPool.exit(amount);
+        stakingPool.exit();
     }
 
     function test_auction_ancestor_tokens() public {
@@ -732,13 +702,13 @@ contract LPTokenLenderFirstResortTest is DSTest {
 
         accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
 
-        uint previousDescendantBalance = descendant.balanceOf(address(this));
+        uint previousDescendantBalance = stakingPool.descendantBalanceOf(address(this));
 
         // auction
         stakingPool.auctionAncestorTokens();
 
         assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
-        assertEq(descendant.balanceOf(address(this)), previousDescendantBalance);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), previousDescendantBalance);
         assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
     }
 
@@ -765,7 +735,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.auctionAncestorTokens();
     }
 
-    ////////////////// Rewards (WIP) //////////////////
     function test_exit_rewards_1(uint amount, uint blockDelay) public {
         amount = amount % 10**24 + 1; // up to 1mm staked
         blockDelay = blockDelay % 100 + 1; // up to 1000 blocks
@@ -774,19 +743,18 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.join(amount);
 
         // request exit
-        stakingPool.requestExit();
+        hevm.roll(block.number + blockDelay);
+        stakingPool.requestExit(amount);
 
         // exit
         hevm.warp(now + exitDelay);
-        hevm.roll(block.number + blockDelay); // will drip 10 eth
-        descendant.approve(address(stakingPool), uint(-1));
         uint256 price = stakingPool.exitPrice(amount);
 
         uint previousBalance = ancestor.balanceOf(address(this));
 
-        stakingPool.exit(amount);
+        stakingPool.exit();
         assertEq(ancestor.balanceOf(address(this)), previousBalance + price);
-        assertEq(descendant.balanceOf(address(this)), 0);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
         assertTrue(rewardToken.balanceOf(address(this)) >= blockDelay * 1 ether - 1); // 1 eth per block
     }
 
@@ -802,15 +770,15 @@ contract LPTokenLenderFirstResortTest is DSTest {
         user2.doJoin(amount);
 
         // request exit
-        user1.doRequestExit();
-        user2.doRequestExit();
+        hevm.roll(block.number + 32); // 32 blocks
+        user1.doRequestExit(amount);
+        user2.doRequestExit(amount);
 
         // exit
         hevm.warp(now + exitDelay);
-        hevm.roll(block.number + 32); // 32 blocks
 
-        user1.doExit(amount);
-        user2.doExit(amount);
+        user1.doExit();
+        user2.doExit();
         assertTrue(rewardToken.balanceOf(address(user1)) >= 16 ether -1); // .5 eth per block
         assertTrue(rewardToken.balanceOf(address(user2)) >= 16 ether -1); // .5 eth per block
     }
@@ -845,29 +813,28 @@ contract LPTokenLenderFirstResortTest is DSTest {
 
         accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
 
-        uint previousDescendantBalance = descendant.balanceOf(address(this));
+        uint previousDescendantBalance = stakingPool.descendantBalanceOf(address(this));
 
         // auction
         stakingPool.auctionAncestorTokens();
 
         assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
-        assertEq(descendant.balanceOf(address(this)), previousDescendantBalance);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), previousDescendantBalance);
         assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
 
         // exiting (after slash)
-        stakingPool.requestExit();
-        hevm.warp(now + exitDelay);
         hevm.roll(block.number + 32); // 32 blocks
-        descendant.approve(address(stakingPool), uint(-1));
+        stakingPool.requestExit(amount);
+        hevm.warp(now + exitDelay);
         uint256 price = stakingPool.exitPrice(amount);
 
         uint previousBalance = ancestor.balanceOf(address(this));
 
         accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 90 ether); // above water
 
-        stakingPool.exit(amount);
+        stakingPool.exit();
         assertEq(ancestor.balanceOf(address(this)), previousBalance + price);
-        assertEq(descendant.balanceOf(address(this)), 0);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
         assertEq(rewardToken.balanceOf(address(this)), 32 ether); // 1 eth per block
     }
 
@@ -899,19 +866,19 @@ contract LPTokenLenderFirstResortTest is DSTest {
         assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
 
         // exiting (after slash)
-        user1.doRequestExit();
-        user2.doRequestExit();
+        user1.doRequestExit(amount);
+        user2.doRequestExit(amount);
         hevm.warp(now + exitDelay);
 
         accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 90 ether); // above water
 
-        user1.doExit(amount);
-        user2.doExit(amount);
+        user1.doExit();
+        user2.doExit();
 
         assertAlmostEqual(ancestor.balanceOf(address(user1)), previousBalance1 - 50 ether, 1);
-        assertEq(descendant.balanceOf(address(user1)), 0);
+        assertEq(stakingPool.descendantBalanceOf(address(user1)), 0);
         assertAlmostEqual(ancestor.balanceOf(address(user2)), previousBalance2 - 50 ether, 1);
-        assertEq(descendant.balanceOf(address(user2)), 0);
+        assertEq(stakingPool.descendantBalanceOf(address(user2)), 0);
     }
 
     function test_rewards_dripper_depleated() public {
@@ -922,13 +889,12 @@ contract LPTokenLenderFirstResortTest is DSTest {
         ancestor.approve(address(stakingPool), amount);
         stakingPool.join(amount);
 
-        stakingPool.requestExit();
-        hevm.warp(now + exitDelay);
         hevm.roll(block.number + 32); // 32 blocks
-        descendant.approve(address(stakingPool), uint(-1));
+        stakingPool.requestExit(amount);
+        hevm.warp(now + exitDelay);
 
-        stakingPool.exit(amount);
-        assertEq(descendant.balanceOf(address(this)), 0);
+        stakingPool.exit();
+        assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
         assertTrue(rewardToken.balanceOf(address(this)) >= 20 ether - 1); // full amount
     }
 
@@ -1008,11 +974,11 @@ contract LPTokenLenderFirstResortTest is DSTest {
         assertTrue(rewardToken.balanceOf(address(user3)) == 0);          // no rewards yet
 
         // users 1 exits the pool
-        user1.doRequestExit();
-        hevm.warp(now + exitDelay);
         hevm.roll(block.number + 12); // 12 blocks
+        user1.doRequestExit(amount);
+        hevm.warp(now + exitDelay);
 
-        user1.doExit(amount);
+        user1.doExit();
         user2.doGetRewards();
         user3.doGetRewards();
         assertTrue(rewardToken.balanceOf(address(user1)) >= 9 ether -1);
@@ -1095,5 +1061,27 @@ contract LPTokenLenderFirstResortTest is DSTest {
 
         stakingPool.getRewards();
         assertTrue(rewardToken.balanceOf(address(this)) >= 40 ether - 1); // 1 eth per block, division rounding causes a slight loss of precision
+    }
+
+    function test_restake() public {
+        uint amount = 1 ether;
+        // join
+        ancestor.approve(address(stakingPool), amount);
+        stakingPool.join(amount);
+
+        // request exit
+        stakingPool.requestExit(amount);
+        (,, uint lockedAmount) = stakingPool.exitWindows(address(this));
+        assertEq(lockedAmount, amount);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
+
+        // rejoin
+        (, uint end,) = stakingPool.exitWindows(address(this));
+        hevm.warp(end + 1);
+        stakingPool.getRewards(); // restaking
+
+        (,, lockedAmount) = stakingPool.exitWindows(address(this));
+        assertEq(lockedAmount, 0);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), amount);
     }
 }
