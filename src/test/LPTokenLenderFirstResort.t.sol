@@ -1084,4 +1084,23 @@ contract LPTokenLenderFirstResortTest is DSTest {
         assertEq(lockedAmount, 0);
         assertEq(stakingPool.descendantBalanceOf(address(this)), amount);
     }
+
+    function test_protocol_underwater() public {
+        // protocolUnderwater == false when unqueuedUnauctionedDebt < safeEngine.coinBalance(accountingEngine) + debtAuctionBidSize
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+        safeEngine.modifyBalance("coin", address(accountingEngine), 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1);
+        assertTrue(!stakingPool.protocolUnderwater());
+
+        // protocolUnderwater == true when unqueuedUnauctionedDebt >= safeEngine.coinBalance(accountingEngine) + debtAuctionBidSize
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether + 1);
+        safeEngine.modifyBalance("coin", address(accountingEngine), 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1);
+        assertTrue(stakingPool.protocolUnderwater());
+
+        // protocolUnderwater == false when accountingEngine.debtAuctionBidSize() > unqueuedUnauctionedDebt
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1000 ether + 1);
+        assertTrue(!stakingPool.protocolUnderwater());
+    }
 }

@@ -855,4 +855,23 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         assertAlmostEqual(ancestor.balanceOf(address(user2)), previousBalance2 + 18 ether, 1);
         assertEq(descendant.balanceOf(address(user2)), 0);
     }
+
+    function test_protocol_underwater() public {
+        // protocolUnderwater == false when unqueuedUnauctionedDebt < safeEngine.coinBalance(accountingEngine) + debtAuctionBidSize
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+        safeEngine.modifyBalance("coin", address(accountingEngine), 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1);
+        assertTrue(!stakingPool.protocolUnderwater());
+
+        // protocolUnderwater == true when unqueuedUnauctionedDebt >= safeEngine.coinBalance(accountingEngine) + debtAuctionBidSize
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether + 1);
+        safeEngine.modifyBalance("coin", address(accountingEngine), 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1);
+        assertTrue(stakingPool.protocolUnderwater());
+
+        // protocolUnderwater == false when accountingEngine.debtAuctionBidSize() > unqueuedUnauctionedDebt
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1000 ether + 1);
+        assertTrue(!stakingPool.protocolUnderwater());
+    }
 }
