@@ -98,10 +98,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     Caller unauth;
 
     uint maxDelay = 48 weeks;
-    uint minExitWindow = 12 hours;
-    uint maxExitWindow = 30 days;
     uint exitDelay = 1 weeks;
-    uint exitWindow = 1 days;
     uint minStakedTokensToKeep = 10 ether;
     uint tokensToAuction  = 100 ether;
     uint systemCoinsToRequest = 1000 ether;
@@ -130,10 +127,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
             address(safeEngine),
             address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -152,10 +146,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
         assertEq(address(stakingPool.rewardDripper()), address(rewardDripper));
         assertEq(address(stakingPool.rewardToken()), address(rewardToken));
         assertEq(stakingPool.MAX_DELAY(), maxDelay);
-        assertEq(stakingPool.MIN_EXIT_WINDOW(), minExitWindow);
-        assertEq(stakingPool.MAX_EXIT_WINDOW(), maxExitWindow);
         assertEq(stakingPool.exitDelay(), exitDelay);
-        assertEq(stakingPool.exitWindow(), exitWindow);
         assertEq(stakingPool.minStakedTokensToKeep(), minStakedTokensToKeep);
         assertEq(stakingPool.tokensToAuction(), tokensToAuction);
         assertEq(stakingPool.systemCoinsToRequest(), systemCoinsToRequest);
@@ -173,10 +164,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
             address(safeEngine),
             address(rewardDripper),
             0,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -191,100 +179,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
             address(safeEngine),
             address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            0,
             exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_maxExitWindow() public {
-        stakingPool = new LPTokenLenderFirstResort(
-            address(ancestor),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(rewardDripper),
-            maxDelay,
-            minExitWindow,
-            0,
-            exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_maxExitWindow2() public {
-        stakingPool = new LPTokenLenderFirstResort(
-            address(ancestor),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(rewardDripper),
-            maxDelay,
-            minExitWindow,
-            minExitWindow,
-            exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_minExitWindow() public {
-        stakingPool = new LPTokenLenderFirstResort(
-            address(ancestor),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(rewardDripper),
-            maxDelay,
-            0,
-            maxExitWindow,
-            exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_exitWindow() public {
-        stakingPool = new LPTokenLenderFirstResort(
-            address(ancestor),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(rewardDripper),
-            maxDelay,
-            minExitWindow,
-            maxExitWindow,
-            exitDelay,
-            minExitWindow - 1,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_exitWindow2() public {
-        stakingPool = new LPTokenLenderFirstResort(
-            address(ancestor),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(rewardDripper),
-            maxDelay,
-            minExitWindow,
-            maxExitWindow,
-            exitDelay,
-            maxExitWindow + 1,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -299,10 +194,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
             address(safeEngine),
             address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             0,
             tokensToAuction,
             systemCoinsToRequest
@@ -317,10 +209,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
             address(safeEngine),
             address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             0,
             systemCoinsToRequest
@@ -335,10 +224,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
             address(safeEngine),
             address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             0
@@ -353,10 +239,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
             address(safeEngine),
             address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -371,10 +254,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
             address(safeEngine),
             address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -389,10 +269,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
             address(0),
             address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -407,10 +284,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
             address(safeEngine),
             address(0),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -438,9 +312,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function test_modify_parameters() public {
         stakingPool.modifyParameters("exitDelay", maxDelay - 10);
         assertEq(stakingPool.exitDelay(), maxDelay - 10);
-
-        stakingPool.modifyParameters("exitWindow", maxExitWindow - 10);
-        assertEq(stakingPool.exitWindow(), maxExitWindow - 10);
 
         stakingPool.modifyParameters("minStakedTokensToKeep", 3);
         assertEq(stakingPool.minStakedTokensToKeep(), 3);
@@ -478,14 +349,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
 
     function testFail_modify_parameters_invalid_exit_delay() public {
         stakingPool.modifyParameters("exitDelay", maxDelay + 1);
-    }
-
-    function testFail_modify_parameters_invalid_exit_window() public {
-        stakingPool.modifyParameters("exitWindow", maxExitWindow + 1);
-    }
-
-    function testFail_modify_parameters_invalid_exit_window2() public {
-        stakingPool.modifyParameters("exitWindow", minExitWindow - 1);
     }
 
     function testFail_modify_parameters_invalid_min_tokens_to_keep() public {
@@ -566,10 +429,10 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.join(1 ether);
 
         stakingPool.requestExit(1 ether);
-        (uint start, uint end, ) = stakingPool.exitWindows(address(this));
+        (uint deadline, uint wad) = stakingPool.exitRequests(address(this));
 
-        assertEq(start, now + exitDelay);
-        assertEq(end, now + exitDelay + exitWindow);
+        assertEq(deadline, now + exitDelay);
+        assertEq(wad, 1 ether);
     }
 
     function testFail_request_exit_before_window_ends() public {
@@ -577,7 +440,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.join(1 ether);
 
         stakingPool.requestExit(1 ether);
-        hevm.warp(now + exitDelay + exitWindow); // one sec to go
+        hevm.warp(now + exitDelay); // one sec to go
         stakingPool.requestExit(1 ether);
     }
 
@@ -611,7 +474,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.requestExit(0);
     }
 
-    function testFail_exit_after_window() public {
+    function testFail_exit_before_deadline() public {
         uint amount = 1 ether;
         // join
         ancestor.approve(address(stakingPool), amount);
@@ -621,25 +484,8 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.requestExit(amount);
 
         // exit
-        (, uint end,) = stakingPool.exitWindows(address(this));
-
-        hevm.warp(end + 1);
-        stakingPool.exit();
-    }
-
-    function testFail_exit_before_window() public {
-        uint amount = 1 ether;
-        // join
-        ancestor.approve(address(stakingPool), amount);
-        stakingPool.join(amount);
-
-        // request exit
-        stakingPool.requestExit(amount);
-
-        // exit
-        (uint start,,) = stakingPool.exitWindows(address(this));
-
-        hevm.warp(start - 1);
+        (uint deadline,) = stakingPool.exitRequests(address(this));
+        hevm.warp(deadline - 1);
         stakingPool.exit();
     }
 
@@ -1061,28 +907,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
 
         stakingPool.getRewards();
         assertTrue(rewardToken.balanceOf(address(this)) >= 40 ether - 1); // 1 eth per block, division rounding causes a slight loss of precision
-    }
-
-    function test_restake() public {
-        uint amount = 1 ether;
-        // join
-        ancestor.approve(address(stakingPool), amount);
-        stakingPool.join(amount);
-
-        // request exit
-        stakingPool.requestExit(amount);
-        (,, uint lockedAmount) = stakingPool.exitWindows(address(this));
-        assertEq(lockedAmount, amount);
-        assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
-
-        // rejoin
-        (, uint end,) = stakingPool.exitWindows(address(this));
-        hevm.warp(end + 1);
-        stakingPool.getRewards(); // restaking
-
-        (,, lockedAmount) = stakingPool.exitWindows(address(this));
-        assertEq(lockedAmount, 0);
-        assertEq(stakingPool.descendantBalanceOf(address(this)), amount);
     }
 
     function test_protocol_underwater() public {

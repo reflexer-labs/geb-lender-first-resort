@@ -75,11 +75,9 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     }
 
     // --- Structs ---
-    struct ExitWindow {
-        // Start time when the exit can happen
-        uint256 start;
+    struct ExitRequest {
         // Exit window deadline
-        uint256 end;
+        uint256 deadline;
         // Ancestor amount queued for exit
         uint256 lockedAmount;
     }
@@ -95,8 +93,6 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     uint256   public lastRewardBlock;
     // The current delay enforced on an exit
     uint256   public exitDelay;
-    // Time during which an address can exit without requesting a new window
-    uint256   public exitWindow;
     // Min maount of ancestor tokens that must remain in the contract and not be auctioned
     uint256   public minStakedTokensToKeep;
     // Max number of auctions that can be active at a time
@@ -115,7 +111,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     // Balances (not affected by slashing)
     mapping(address => uint256)    public descendantBalanceOf;
     // Exit data
-    mapping(address => ExitWindow) public exitWindows;
+    mapping(address => ExitRequest) public exitRequests;
     // The amount of tokens inneligible for claiming rewards (see formula below)
     mapping(address => uint256)    internal rewardDebt;
     // Pending reward = (descendant.balanceOf(user) * accTokensPerShare) - rewardDebt[user]
@@ -135,10 +131,6 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
 
     // Max delay that can be enforced for an exit
     uint256 public immutable MAX_DELAY;
-    // Minimum exit window during which an address can exit without waiting again for another window
-    uint256 public immutable MIN_EXIT_WINDOW;
-    // Max exit window during which an address can exit without waiting again for another window
-    uint256 public immutable MAX_EXIT_WINDOW;
 
     // --- Events ---
     event AddAuthorization(address account);
@@ -149,7 +141,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     event ToggleBypassAuctions(bool bypassAuctions);
     event ToggleForcedExit(bool forcedExit);
     event AuctionAncestorTokens(address auctionHouse, uint256 amountAuctioned, uint256 amountRequested);
-    event RequestExit(address indexed account, uint256 start, uint256 end);
+    event RequestExit(address indexed account, uint256 deadline, uint256 amount);
     event Join(address indexed account, uint256 price, uint256 amount);
     event Exit(address indexed account, uint256 price, uint256 amount);
     event RewardsPaid(address account, uint256 amount);
@@ -162,19 +154,13 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
       address safeEngine_,
       address rewardDripper_,
       uint256 maxDelay_,
-      uint256 minExitWindow_,
-      uint256 maxExitWindow_,
       uint256 exitDelay_,
-      uint256 exitWindow_,
       uint256 minStakedTokensToKeep_,
       uint256 tokensToAuction_,
       uint256 systemCoinsToRequest_
     ) public {
         require(maxDelay_ > 0, "ProtocolTokenLenderFirstResort/null-max-delay");
-        require(both(maxExitWindow_ > 0, maxExitWindow_ > minExitWindow_), "ProtocolTokenLenderFirstResort/invalid-max-exit-window");
-        require(minExitWindow_ > 0, "ProtocolTokenLenderFirstResort/invalid-min-exit-window");
         require(exitDelay_ <= maxDelay_, "ProtocolTokenLenderFirstResort/invalid-exit-delay");
-        require(both(exitWindow_ >= minExitWindow_, exitWindow_ <= maxExitWindow_), "ProtocolTokenLenderFirstResort/invalid-exit-window");
         require(minStakedTokensToKeep_ > 0, "ProtocolTokenLenderFirstResort/null-min-staked-tokens");
         require(tokensToAuction_ > 0, "ProtocolTokenLenderFirstResort/null-tokens-to-auction");
         require(systemCoinsToRequest_ > 0, "ProtocolTokenLenderFirstResort/null-sys-coins-to-request");
@@ -188,11 +174,8 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
         maxConcurrentAuctions          = uint(-1);
 
         MAX_DELAY                      = maxDelay_;
-        MIN_EXIT_WINDOW                = minExitWindow_;
-        MAX_EXIT_WINDOW                = maxExitWindow_;
 
         exitDelay                      = exitDelay_;
-        exitWindow                     = exitWindow_;
 
         minStakedTokensToKeep          = minStakedTokensToKeep_;
         tokensToAuction                = tokensToAuction_;
@@ -275,10 +258,6 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
         if (parameter == "exitDelay") {
           require(data <= MAX_DELAY, "ProtocolTokenLenderFirstResort/invalid-exit-delay");
           exitDelay = data;
-        }
-        else if (parameter == "exitWindow") {
-          require(both(data >= MIN_EXIT_WINDOW, data <= MAX_EXIT_WINDOW), "ProtocolTokenLenderFirstResort/invalid-exit-window");
-          exitWindow = data;
         }
         else if (parameter == "minStakedTokensToKeep") {
           require(data > 0, "ProtocolTokenLenderFirstResort/null-min-staked-tokens");
@@ -404,8 +383,6 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
             rewardsBalance = rewardToken.balanceOf(address(this));
             emit RewardsPaid(msg.sender, pending);
         }
-
-        restake();
         _;
 
         rewardDebt[msg.sender] = multiply(descendantBalanceOf[msg.sender], accTokensPerShare) / RAY;
@@ -475,36 +452,26 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     */
     function requestExit(uint wad) external nonReentrant payRewards {
         require(wad > 0, "ProtocolTokenLenderFirstResort/null-amount-to-exit");
-        require(now > exitWindows[msg.sender].end, "ProtocolTokenLenderFirstResort/ongoing-request");
+        require(now > exitRequests[msg.sender].deadline, "ProtocolTokenLenderFirstResort/ongoing-request");
 
-        exitWindows[msg.sender].start         = addition(now, exitDelay);
-        exitWindows[msg.sender].end           = addition(exitWindows[msg.sender].start, exitWindow);
-        exitWindows[msg.sender].lockedAmount  = addition(exitWindows[msg.sender].lockedAmount, wad);
+        exitRequests[msg.sender].deadline      = addition(now, exitDelay);
+        exitRequests[msg.sender].lockedAmount  = addition(exitRequests[msg.sender].lockedAmount, wad);
 
         descendantBalanceOf[msg.sender] = subtract(descendantBalanceOf[msg.sender], wad);
 
-        emit RequestExit(msg.sender, exitWindows[msg.sender].start, exitWindows[msg.sender].end);
+        emit RequestExit(msg.sender, exitRequests[msg.sender].deadline, wad);
     }
     /*
     * @notify Exit ancestor tokens
     */
     function exit() external {
-        require(both(both(now >= exitWindows[msg.sender].start, now <= exitWindows[msg.sender].end), exitWindows[msg.sender].end > 0), "ProtocolTokenLenderFirstResort/not-in-window");
+        require(both(now >= exitRequests[msg.sender].deadline, exitRequests[msg.sender].lockedAmount > 0), "ProtocolTokenLenderFirstResort/wait-more");
         require(either(!protocolUnderwater(), forcedExit), "ProtocolTokenLenderFirstResort/exit-not-allowed");
 
-        uint256 price = exitPrice(exitWindows[msg.sender].lockedAmount);
-        stakedSupply  = subtract(stakedSupply, exitWindows[msg.sender].lockedAmount);
+        uint256 price = exitPrice(exitRequests[msg.sender].lockedAmount);
+        stakedSupply  = subtract(stakedSupply, exitRequests[msg.sender].lockedAmount);
         require(ancestor.transfer(msg.sender, price), "ProtocolTokenLenderFirstResort/could-not-transfer-ancestor");
-        emit Exit(msg.sender, price, exitWindows[msg.sender].lockedAmount);
-        delete exitWindows[msg.sender];
-    }
-    /*
-    * @notify Restake expired exit requests
-    */
-    function restake() internal {
-        if (either(now <= exitWindows[msg.sender].end, exitWindows[msg.sender].lockedAmount == 0)) return;
-
-        descendantBalanceOf[msg.sender] = addition(descendantBalanceOf[msg.sender],  exitWindows[msg.sender].lockedAmount);
-        delete exitWindows[msg.sender];
+        emit Exit(msg.sender, price, exitRequests[msg.sender].lockedAmount);
+        delete exitRequests[msg.sender];
     }
 }
