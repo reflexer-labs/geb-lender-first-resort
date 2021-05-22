@@ -341,9 +341,9 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         uint256 unqueuedUnauctionedDebt = accountingEngine.unqueuedUnauctionedDebt();
         uint256 coinBalance             = safeEngine.coinBalance(address(accountingEngine));
 
-        both(
+        return both(
           accountingEngine.debtAuctionBidSize() <= unqueuedUnauctionedDebt,
-          coinBalance <= subtract(unqueuedUnauctionedDebt, accountingEngine.debtAuctionBidSize())
+          unqueuedUnauctionedDebt >= addition(coinBalance, accountingEngine.debtAuctionBidSize())
         );
     }
 
