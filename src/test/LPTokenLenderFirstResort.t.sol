@@ -73,7 +73,7 @@ contract Caller {
     }
 
     function doJoin(uint wad) public {
-        stakingPool.ancestor().approve(address(stakingPool), uint(-1));
+        stakingPool.ancestorPool().token().approve(address(stakingPool), uint(-1));
         stakingPool.join(wad);
     }
 
@@ -122,6 +122,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
 
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
+            address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -141,10 +142,10 @@ contract LPTokenLenderFirstResortTest is DSTest {
     }
 
     function test_setup() public {
-        assertEq(address(stakingPool.ancestor()), address(ancestor));
+        assertEq(address(stakingPool.ancestorPool().token()), address(ancestor));
         assertEq(address(stakingPool.auctionHouse()), address(auctionHouse));
         assertEq(address(stakingPool.rewardDripper()), address(rewardDripper));
-        assertEq(address(stakingPool.rewardToken()), address(rewardToken));
+        assertEq(address(stakingPool.rewardPool().token()), address(rewardToken));
         assertEq(stakingPool.MAX_DELAY(), maxDelay);
         assertEq(stakingPool.exitDelay(), exitDelay);
         assertEq(stakingPool.minStakedTokensToKeep(), minStakedTokensToKeep);
@@ -159,6 +160,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_maxDelay() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
+            address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -171,24 +173,10 @@ contract LPTokenLenderFirstResortTest is DSTest {
         );
     }
 
-    function testFail_setup_same_ancestor_rewards_tokens() public {
-        stakingPool = new LPTokenLenderFirstResort(
-            address(rewardToken),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(rewardDripper),
-            maxDelay,
-            exitDelay,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
     function testFail_setup_invalid_minStakedTokensToKeep() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
+            address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -204,6 +192,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_tokensToAuction() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
+            address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -219,6 +208,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_systemCoinsToRequest() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
+            address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -234,6 +224,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_auctionHouse() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
+            address(rewardToken),
             address(0),
             address(accountingEngine),
             address(safeEngine),
@@ -249,6 +240,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_accountingEngine() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
+            address(rewardToken),
             address(auctionHouse),
             address(0),
             address(safeEngine),
@@ -264,6 +256,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_safeEngine() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
+            address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
             address(0),
@@ -279,6 +272,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     function testFail_setup_invalid_rewardsDripper() public {
         stakingPool = new LPTokenLenderFirstResort(
             address(ancestor),
+            address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
@@ -383,7 +377,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
 
         stakingPool.join(amount);
 
-        assertEq(ancestor.balanceOf(address(stakingPool)), amount);
+        assertEq(ancestor.balanceOf(address(stakingPool.ancestorPool())), amount);
         assertEq(stakingPool.descendantBalanceOf(address(this)),price);
     }
 
@@ -551,6 +545,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
         uint previousDescendantBalance = stakingPool.descendantBalanceOf(address(this));
 
         // auction
+        emit log_named_uint("depositedAncestor", stakingPool.depositedAncestor());
         stakingPool.auctionAncestorTokens();
 
         assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
@@ -894,7 +889,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
 
         hevm.roll(block.number + 10); // 10 blocks
 
-        rewardToken.mint(address(stakingPool), 10 ether); // manually filling up contract
+        rewardToken.mint(address(stakingPool.rewardPool()), 10 ether); // manually filling up contract
 
         stakingPool.getRewards();
         assertEq(rewardToken.balanceOf(address(this)), 30 ether); // 1 eth per block + externally funded
@@ -903,9 +898,10 @@ contract LPTokenLenderFirstResortTest is DSTest {
         stakingPool.pullFunds(); // pulling rewards to conrtact without updating
 
         hevm.roll(block.number + 4);
-        rewardToken.mint(address(stakingPool), 2 ether); // manually filling up contract
+        rewardToken.mint(address(stakingPool.rewardPool()), 2 ether); // manually filling up contract
 
         stakingPool.getRewards();
+        emit log_named_uint("balance", rewardToken.balanceOf(address(this)));
         assertTrue(rewardToken.balanceOf(address(this)) >= 40 ether - 1); // 1 eth per block, division rounding causes a slight loss of precision
     }
 

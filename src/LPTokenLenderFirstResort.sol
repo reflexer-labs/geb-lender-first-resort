@@ -43,8 +43,31 @@ abstract contract SAFEEngineLike {
 }
 abstract contract RewardDripperLike {
     function dripReward() virtual external;
+    function dripReward(address) virtual external;
     function rewardPerBlock() virtual external returns (uint256);
     function rewardToken() virtual external returns (TokenLike);
+}
+
+// Stores tokens, owned by LenderFirstResort
+contract TokenPool {
+    TokenLike public token;
+    address   public owner;
+
+    constructor(address token_) public {
+        token = TokenLike(token_);
+        owner = msg.sender;
+    }
+
+    // @notice Transfers tokens from the pool (callable by owner only)
+    function transfer(address to, uint256 wad) public returns (bool) {
+        require(msg.sender == owner, "unauthorized");
+        return token.transfer(to, wad);
+    }
+
+    // @notice Returns token balance of the pool
+    function balance() public view returns (uint256) {
+        return token.balanceOf(address(this));
+    }
 }
 
 contract LPTokenLenderFirstResort is ReentrancyGuard {
@@ -117,9 +140,9 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     // Pending reward = (descendant.balanceOf(user) * accTokensPerShare) - rewardDebt[user]
 
     // The token being deposited in the pool
-    TokenLike            public ancestor;
+    TokenPool            public ancestorPool;
     // The token used to pay rewards
-    TokenLike            public rewardToken;
+    TokenPool            public rewardPool;
     // Auction house for staked tokens
     AuctionHouseLike     public auctionHouse;
     // Accounting engine contract
@@ -149,6 +172,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
 
     constructor(
       address ancestor_,
+      address rewardToken_,
       address auctionHouse_,
       address accountingEngine_,
       address safeEngine_,
@@ -186,14 +210,10 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
         safeEngine                     = SAFEEngineLike(safeEngine_);
         rewardDripper                  = RewardDripperLike(rewardDripper_);
 
-        ancestor                       = TokenLike(ancestor_);
-        rewardToken                    = TokenLike(rewardDripper.rewardToken());
-
-        require(ancestor_ != address(rewardToken), "ProtocolTokenLenderFirstResort/invalid-ancestor-reward-tokens");
+        ancestorPool                   = new TokenPool(ancestor_);
+        rewardPool                     = new TokenPool(rewardToken_);
 
         lastRewardBlock                = block.number;
-
-        require(ancestor.decimals() == 18, "ProtocolTokenLenderFirstResort/ancestor-decimal-mismatch");
 
         emit AddAuthorization(msg.sender);
     }
@@ -304,7 +324,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     * @notify Return the ancestor token balance for this contract
     */
     function depositedAncestor() public view returns (uint256) {
-        return ancestor.balanceOf(address(this));
+        return ancestorPool.balance();
     }
     /*
     * @notify Returns how many ancestor tokens are offered for one descendant token
@@ -375,12 +395,12 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     modifier payRewards() {
         updatePool();
 
-        if (descendantBalanceOf[msg.sender] > 0 && rewardToken.balanceOf(address(this)) > 0) {
+        if (descendantBalanceOf[msg.sender] > 0 && rewardPool.balance() > 0) {
             // Pays the reward
             uint256 pending = subtract(multiply(descendantBalanceOf[msg.sender], accTokensPerShare) / RAY, rewardDebt[msg.sender]);
 
-            rewardToken.transferFrom(address(this), msg.sender, pending);
-            rewardsBalance = rewardToken.balanceOf(address(this));
+            rewardPool.transfer(msg.sender, pending);
+            rewardsBalance = rewardPool.balance();
             emit RewardsPaid(msg.sender, pending);
         }
         _;
@@ -397,7 +417,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     * @notify Pull funds from the dripper
     */
     function pullFunds() public {
-        rewardDripper.dripReward();
+        rewardDripper.dripReward(address(rewardPool));
     }
 
     /*
@@ -409,7 +429,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
         if (stakedSupply == 0) return;
 
         pullFunds();
-        uint256 increaseInBalance = subtract(rewardToken.balanceOf(address(this)), rewardsBalance);
+        uint256 increaseInBalance = subtract(rewardPool.balance(), rewardsBalance);
         rewardsBalance = addition(rewardsBalance, increaseInBalance);
 
         // Updates distribution info
@@ -423,7 +443,8 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
     function auctionAncestorTokens() external nonReentrant {
         require(canAuctionTokens(), "ProtocolTokenLenderFirstResort/cannot-auction-tokens");
 
-        ancestor.approve(address(auctionHouse), tokensToAuction);
+        ancestorPool.transfer(address(this), tokensToAuction);
+        ancestorPool.token().approve(address(auctionHouse), tokensToAuction);
         auctionHouse.startAuction(tokensToAuction, systemCoinsToRequest);
         updatePool();
 
@@ -440,7 +461,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
         uint256 price = joinPrice(wad);
         require(price > 0, "ProtocolTokenLenderFirstResort/null-join-price");
 
-        require(ancestor.transferFrom(msg.sender, address(this), wad), "ProtocolTokenLenderFirstResort/could-not-transfer-ancestor");
+        require(ancestorPool.token().transferFrom(msg.sender, address(ancestorPool), wad), "ProtocolTokenLenderFirstResort/could-not-transfer-ancestor");
         descendantBalanceOf[msg.sender] = addition(descendantBalanceOf[msg.sender], price);
         stakedSupply = addition(stakedSupply, price);
 
@@ -470,7 +491,7 @@ contract LPTokenLenderFirstResort is ReentrancyGuard {
 
         uint256 price = exitPrice(exitRequests[msg.sender].lockedAmount);
         stakedSupply  = subtract(stakedSupply, exitRequests[msg.sender].lockedAmount);
-        require(ancestor.transfer(msg.sender, price), "ProtocolTokenLenderFirstResort/could-not-transfer-ancestor");
+        require(ancestorPool.transfer(msg.sender, price), "ProtocolTokenLenderFirstResort/could-not-transfer-ancestor");
         emit Exit(msg.sender, price, exitRequests[msg.sender].lockedAmount);
         delete exitRequests[msg.sender];
     }
