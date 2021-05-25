@@ -41,11 +41,8 @@ abstract contract SAFEEngineLike {
     function coinBalance(address) virtual public view returns (uint256);
     function debtBalance(address) virtual public view returns (uint256);
 }
-abstract contract RewardDripperLike {
-    function dripReward() virtual external;
-}
 
-contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
+contract OffChainLenderFirstResort is ReentrancyGuard {
     // --- Auth ---
     mapping (address => uint) public authorizedAccounts;
     /**
@@ -115,8 +112,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     AccountingEngineLike public accountingEngine;
     // The safe engine contract
     SAFEEngineLike       public safeEngine;
-    // Contract that drips rewards
-    RewardDripperLike    public rewardDripper;
 
     // Max delay that can be enforced for an exit
     uint256 public immutable MAX_DELAY;
@@ -144,7 +139,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
       address auctionHouse_,
       address accountingEngine_,
       address safeEngine_,
-      address rewardDripper_,
       uint256 maxDelay_,
       uint256 minExitWindow_,
       uint256 maxExitWindow_,
@@ -165,7 +159,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         require(auctionHouse_ != address(0), "ProtocolTokenLenderFirstResort/null-auction-house");
         require(accountingEngine_ != address(0), "ProtocolTokenLenderFirstResort/null-accounting-engine");
         require(safeEngine_ != address(0), "ProtocolTokenLenderFirstResort/null-safe-engine");
-        require(rewardDripper_ != address(0), "ProtocolTokenLenderFirstResort/null-reward-dripper");
 
         authorizedAccounts[msg.sender] = 1;
         canJoin                        = true;
@@ -185,7 +178,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         auctionHouse                   = AuctionHouseLike(auctionHouse_);
         accountingEngine               = AccountingEngineLike(accountingEngine_);
         safeEngine                     = SAFEEngineLike(safeEngine_);
-        rewardDripper                  = RewardDripperLike(rewardDripper_);
 
         ancestor                       = TokenLike(ancestor_);
         descendant                     = TokenLike(descendant_);
@@ -293,9 +285,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         else if (parameter == "accountingEngine") {
           accountingEngine = AccountingEngineLike(data);
         }
-        else if (parameter == "rewardDripper") {
-          rewardDripper = RewardDripperLike(data);
-        }
         else revert("ProtocolTokenLenderFirstResort/modify-unrecognized-param");
         emit ModifyParameters(parameter, data);
     }
@@ -369,15 +358,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
 
     // --- Core Logic ---
     /*
-    * @notify Pull ancestor token rewards from the dripper
-    */
-    function pullReward() public {
-        if (either(block.number == lastRewardBlock, protocolUnderwater())) return;
-        lastRewardBlock = block.number;
-        rewardDripper.dripReward();
-    }
-
-    /*
     * @notify Create a new auction that sells ancestor tokens in exchange for system coins
     */
     function auctionAncestorTokens() external nonReentrant {
@@ -402,8 +382,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
 
         require(ancestor.transferFrom(msg.sender, address(this), wad), "ProtocolTokenLenderFirstResort/could-not-transfer-ancestor");
         descendant.mint(msg.sender, price);
-
-        pullReward();
 
         emit Join(msg.sender, price, wad);
     }

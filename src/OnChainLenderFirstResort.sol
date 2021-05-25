@@ -70,7 +70,7 @@ contract TokenPool {
     }
 }
 
-contract LPTokenLenderFirstResort is ReentrancyGuard {
+contract OnChainLenderFirstResort is ReentrancyGuard {
     // --- Auth ---
     mapping (address => uint) public authorizedAccounts;
     /**

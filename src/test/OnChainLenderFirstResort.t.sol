@@ -2,7 +2,7 @@ pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
 import "ds-token/token.sol";
-import "../LPTokenLenderFirstResort.sol";
+import "../OnChainLenderFirstResort.sol";
 import {RewardDripper} from "../RewardDripper.sol";
 
 abstract contract Hevm {
@@ -46,9 +46,9 @@ contract SAFEEngineMock {
 }
 
 contract Caller {
-    LPTokenLenderFirstResort stakingPool;
+    OnChainLenderFirstResort stakingPool;
 
-    constructor (LPTokenLenderFirstResort add) public {
+    constructor (OnChainLenderFirstResort add) public {
         stakingPool = add;
     }
 
@@ -86,11 +86,11 @@ contract Caller {
     }
 }
 
-contract LPTokenLenderFirstResortTest is DSTest {
+contract OnChainLenderFirstResortTest is DSTest {
     Hevm hevm;
     DSToken rewardToken;
     DSToken ancestor;
-    LPTokenLenderFirstResort stakingPool;
+    OnChainLenderFirstResort stakingPool;
     AuctionHouseMock auctionHouse;
     AccountingEngineMock accountingEngine;
     SAFEEngineMock safeEngine;
@@ -120,7 +120,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
             1 ether               // rewardPerBlock
         );
 
-        stakingPool = new LPTokenLenderFirstResort(
+        stakingPool = new OnChainLenderFirstResort(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -158,7 +158,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_maxDelay() public {
-        stakingPool = new LPTokenLenderFirstResort(
+        stakingPool = new OnChainLenderFirstResort(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -174,7 +174,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_minStakedTokensToKeep() public {
-        stakingPool = new LPTokenLenderFirstResort(
+        stakingPool = new OnChainLenderFirstResort(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -190,7 +190,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_tokensToAuction() public {
-        stakingPool = new LPTokenLenderFirstResort(
+        stakingPool = new OnChainLenderFirstResort(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -206,7 +206,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_systemCoinsToRequest() public {
-        stakingPool = new LPTokenLenderFirstResort(
+        stakingPool = new OnChainLenderFirstResort(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -222,7 +222,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_auctionHouse() public {
-        stakingPool = new LPTokenLenderFirstResort(
+        stakingPool = new OnChainLenderFirstResort(
             address(ancestor),
             address(rewardToken),
             address(0),
@@ -238,7 +238,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_accountingEngine() public {
-        stakingPool = new LPTokenLenderFirstResort(
+        stakingPool = new OnChainLenderFirstResort(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -254,7 +254,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_safeEngine() public {
-        stakingPool = new LPTokenLenderFirstResort(
+        stakingPool = new OnChainLenderFirstResort(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -270,7 +270,7 @@ contract LPTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_rewardsDripper() public {
-        stakingPool = new LPTokenLenderFirstResort(
+        stakingPool = new OnChainLenderFirstResort(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -923,10 +923,10 @@ contract LPTokenLenderFirstResortTest is DSTest {
     }
 }
 
-contract LPTokenLenderFirstResortSameTokenTest is DSTest {
+contract OnChainLenderFirstResortSameTokenTest is DSTest {
     Hevm hevm;
     DSToken ancestor;
-    LPTokenLenderFirstResort stakingPool;
+    OnChainLenderFirstResort stakingPool;
     AuctionHouseMock auctionHouse;
     AccountingEngineMock accountingEngine;
     SAFEEngineMock safeEngine;
@@ -955,7 +955,7 @@ contract LPTokenLenderFirstResortSameTokenTest is DSTest {
             1 ether               // rewardPerBlock
         );
 
-        stakingPool = new LPTokenLenderFirstResort(
+        stakingPool = new OnChainLenderFirstResort(
             address(ancestor),
             address(ancestor),
             address(auctionHouse),
@@ -1212,7 +1212,7 @@ contract LPTokenLenderFirstResortSameTokenTest is DSTest {
 
         stakingPool.exit();
         assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
-        assertTrue(ancestor.balanceOf(address(this)) >= 20 ether - 1); // full amount
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + amount + 20 ether - 1); // full amount
     }
 
     function test_rewards_dripper_depleated_recharged() public {
