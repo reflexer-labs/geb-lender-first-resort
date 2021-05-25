@@ -545,7 +545,6 @@ contract LPTokenLenderFirstResortTest is DSTest {
         uint previousDescendantBalance = stakingPool.descendantBalanceOf(address(this));
 
         // auction
-        emit log_named_uint("depositedAncestor", stakingPool.depositedAncestor());
         stakingPool.auctionAncestorTokens();
 
         assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
@@ -901,8 +900,437 @@ contract LPTokenLenderFirstResortTest is DSTest {
         rewardToken.mint(address(stakingPool.rewardPool()), 2 ether); // manually filling up contract
 
         stakingPool.getRewards();
-        emit log_named_uint("balance", rewardToken.balanceOf(address(this)));
         assertTrue(rewardToken.balanceOf(address(this)) >= 40 ether - 1); // 1 eth per block, division rounding causes a slight loss of precision
+    }
+
+    function test_protocol_underwater() public {
+        // protocolUnderwater == false when unqueuedUnauctionedDebt < safeEngine.coinBalance(accountingEngine) + debtAuctionBidSize
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+        safeEngine.modifyBalance("coin", address(accountingEngine), 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1);
+        assertTrue(!stakingPool.protocolUnderwater());
+
+        // protocolUnderwater == true when unqueuedUnauctionedDebt >= safeEngine.coinBalance(accountingEngine) + debtAuctionBidSize
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether + 1);
+        safeEngine.modifyBalance("coin", address(accountingEngine), 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1);
+        assertTrue(stakingPool.protocolUnderwater());
+
+        // protocolUnderwater == false when accountingEngine.debtAuctionBidSize() > unqueuedUnauctionedDebt
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1000 ether + 1);
+        assertTrue(!stakingPool.protocolUnderwater());
+    }
+}
+
+contract LPTokenLenderFirstResortSameTokenTest is DSTest {
+    Hevm hevm;
+    DSToken ancestor;
+    LPTokenLenderFirstResort stakingPool;
+    AuctionHouseMock auctionHouse;
+    AccountingEngineMock accountingEngine;
+    SAFEEngineMock safeEngine;
+    RewardDripper rewardDripper;
+    Caller unauth;
+
+    uint maxDelay = 48 weeks;
+    uint exitDelay = 1 weeks;
+    uint minStakedTokensToKeep = 10 ether;
+    uint tokensToAuction  = 100 ether;
+    uint systemCoinsToRequest = 1000 ether;
+
+    function setUp() public {
+        hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+
+        hevm.roll(5000000);
+        hevm.warp(100000001);
+
+        ancestor = new DSToken("PROT", "PROT");
+        auctionHouse = new AuctionHouseMock(address(ancestor));
+        accountingEngine = new AccountingEngineMock();
+        safeEngine = new SAFEEngineMock();
+        rewardDripper = new RewardDripper(
+            address(this),        // requestor
+            address(ancestor),
+            1 ether               // rewardPerBlock
+        );
+
+        stakingPool = new LPTokenLenderFirstResort(
+            address(ancestor),
+            address(ancestor),
+            address(auctionHouse),
+            address(accountingEngine),
+            address(safeEngine),
+            address(rewardDripper),
+            maxDelay,
+            exitDelay,
+            minStakedTokensToKeep,
+            tokensToAuction,
+            systemCoinsToRequest
+        );
+
+        rewardDripper.modifyParameters("requestor", address(stakingPool));
+        ancestor.mint(address(rewardDripper), 10000000 ether);
+
+        ancestor.mint(address(this), 1000000000 ether);
+        unauth = new Caller(stakingPool);
+    }
+
+    function test_setup() public {
+        assertEq(address(stakingPool.ancestorPool().token()), address(ancestor));
+        assertEq(address(stakingPool.auctionHouse()), address(auctionHouse));
+        assertEq(address(stakingPool.rewardDripper()), address(rewardDripper));
+        assertEq(address(stakingPool.rewardPool().token()), address(ancestor));
+        assertEq(stakingPool.MAX_DELAY(), maxDelay);
+        assertEq(stakingPool.exitDelay(), exitDelay);
+        assertEq(stakingPool.minStakedTokensToKeep(), minStakedTokensToKeep);
+        assertEq(stakingPool.tokensToAuction(), tokensToAuction);
+        assertEq(stakingPool.systemCoinsToRequest(), systemCoinsToRequest);
+        assertEq(stakingPool.authorizedAccounts(address(this)), 1);
+        assertEq(stakingPool.maxConcurrentAuctions(), uint(-1));
+        assertEq(stakingPool.stakedSupply(), 0);
+        assertTrue(stakingPool.canJoin());
+    }
+
+    function test_join() public {
+        uint amount = 1 ether;
+
+        ancestor.approve(address(stakingPool), amount);
+        uint price = stakingPool.joinPrice(amount);
+
+        stakingPool.join(amount);
+
+        assertEq(ancestor.balanceOf(address(stakingPool.ancestorPool())), amount);
+        assertEq(stakingPool.descendantBalanceOf(address(this)),price);
+    }
+
+    function test_join_2() public {
+        uint amount = 1 ether;
+        ancestor.approve(address(stakingPool), amount);
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+        safeEngine.modifyBalance("coin", address(accountingEngine), 1000 ether);
+
+        stakingPool.join(amount);
+    }
+
+    function test_exit() public {
+        uint amount = 2 ether;
+        // join
+        ancestor.approve(address(stakingPool), uint(-1));
+        stakingPool.join(amount);
+
+        // request exit
+        stakingPool.requestExit(amount);
+
+        // exit
+        hevm.warp(now + exitDelay);
+        uint256 price = stakingPool.exitPrice(amount);
+
+        uint previousBalance = ancestor.balanceOf(address(this));
+
+        stakingPool.exit();
+        assertEq(ancestor.balanceOf(address(this)), previousBalance + price);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
+    }
+
+    function test_auction_ancestor_tokens() public {
+        uint amount = 1000 ether;
+        // join
+        ancestor.approve(address(stakingPool), amount);
+        stakingPool.join(amount);
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+
+        uint previousDescendantBalance = stakingPool.descendantBalanceOf(address(this));
+
+        // auction
+        stakingPool.auctionAncestorTokens();
+
+        assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), previousDescendantBalance);
+        assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
+    }
+
+    function test_exit_rewards_1(uint amount, uint blockDelay) public {
+        amount = amount % 10**24 + 1; // up to 1mm staked
+        blockDelay = blockDelay % 100 + 1; // up to 1000 blocks
+        // join
+        ancestor.approve(address(stakingPool), uint(-1));
+        stakingPool.join(amount);
+
+        // request exit
+        hevm.roll(block.number + blockDelay);
+        uint previousBalance = ancestor.balanceOf(address(this));
+        stakingPool.requestExit(amount);
+
+        // exit
+        hevm.warp(now + exitDelay);
+        uint256 price = stakingPool.exitPrice(amount);
+
+        stakingPool.exit();
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + price + (blockDelay * 1 ether) - 1);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
+    }
+
+    function test_exit_rewards_2_users2(uint amount) public {
+        amount = amount % 10**24 + 1; // non null up to 1mm
+        Caller user1 = new Caller(stakingPool);
+        ancestor.transfer(address(user1), amount);
+        Caller user2 = new Caller(stakingPool);
+        ancestor.transfer(address(user2), amount);
+
+        // join
+        user1.doJoin(amount);
+        user2.doJoin(amount);
+
+        // request exit
+        hevm.roll(block.number + 32); // 32 blocks
+        uint previousBalance1 = ancestor.balanceOf(address(user1));
+        uint previousBalance2 = ancestor.balanceOf(address(user2));
+        user1.doRequestExit(amount);
+        user2.doRequestExit(amount);
+
+        // exit
+        hevm.warp(now + exitDelay);
+
+        user1.doExit();
+        user2.doExit();
+        assertTrue(ancestor.balanceOf(address(user1)) >= previousBalance1 + 16 ether -1); // .5 eth per block
+        assertTrue(ancestor.balanceOf(address(user2)) >= previousBalance2 + 16 ether -1); // .5 eth per block
+    }
+
+    function test_get_rewards() public {
+        uint amount = 10 ether;
+
+        hevm.roll(block.number + 10);
+
+        stakingPool.updatePool(); // no effect
+
+        // join
+        ancestor.approve(address(stakingPool), uint(-1));
+        stakingPool.join(amount);
+
+        uint previousBalance = ancestor.balanceOf(address(this));
+
+        hevm.roll(block.number + 10); // 10 blocks
+
+        stakingPool.getRewards();
+        assertEq(ancestor.balanceOf(address(this)), previousBalance + 20 ether); // 1 eth per block
+
+        hevm.roll(block.number + 8); // 8 blocks
+
+        stakingPool.getRewards();
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + 28 ether - 1); // 1 eth per block, division rounding causes a slight loss of precision
+    }
+
+    function test_rewards_after_slashing() public {
+        uint amount = 1000 ether;
+        // join
+        ancestor.approve(address(stakingPool), amount);
+        stakingPool.join(amount);
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+
+        uint previousDescendantBalance = stakingPool.descendantBalanceOf(address(this));
+
+        // auction
+        stakingPool.auctionAncestorTokens();
+
+        assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), previousDescendantBalance);
+        assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
+
+        // exiting (after slash)
+        hevm.roll(block.number + 32); // 32 blocks
+        uint previousBalance = ancestor.balanceOf(address(this));
+        stakingPool.requestExit(amount);
+        hevm.warp(now + exitDelay);
+        uint256 price = stakingPool.exitPrice(amount);
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 90 ether); // above water
+
+        stakingPool.exit();
+        assertEq(ancestor.balanceOf(address(this)), previousBalance + price + 32 ether);
+        assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
+    }
+
+    function assertAlmostEqual(uint a, uint b, uint p) public {
+        uint v = a - (a / 10**p);
+        assertTrue(b >= a - v && b <= a + v);
+    }
+
+    function test_slashing_2_users() public {
+        uint amount = 513 ether;
+        Caller user1 = new Caller(stakingPool);
+        ancestor.transfer(address(user1), amount);
+        Caller user2 = new Caller(stakingPool);
+        ancestor.transfer(address(user2), amount);
+
+        uint previousBalance1 = ancestor.balanceOf(address(user1));
+        uint previousBalance2 = ancestor.balanceOf(address(user2));
+
+        // join
+        user1.doJoin(amount);
+        user2.doJoin(amount);
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+
+        // auction
+        stakingPool.auctionAncestorTokens();
+
+        assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
+        assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
+
+        // exiting (after slash)
+        user1.doRequestExit(amount);
+        user2.doRequestExit(amount);
+        hevm.warp(now + exitDelay);
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 90 ether); // above water
+
+        user1.doExit();
+        user2.doExit();
+
+        assertAlmostEqual(ancestor.balanceOf(address(user1)), previousBalance1 - 50 ether, 1);
+        assertEq(stakingPool.descendantBalanceOf(address(user1)), 0);
+        assertAlmostEqual(ancestor.balanceOf(address(user2)), previousBalance2 - 50 ether, 1);
+        assertEq(stakingPool.descendantBalanceOf(address(user2)), 0);
+    }
+
+    function test_rewards_dripper_depleated() public {
+        uint amount = 7 ether;
+        // leave rewards only for 20 blocks
+        rewardDripper.transferTokenOut(address(0xfab), ancestor.balanceOf(address(rewardDripper)) - 20 ether);
+
+        ancestor.approve(address(stakingPool), amount);
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 32); // 32 blocks
+        uint previousBalance = ancestor.balanceOf(address(this));
+        stakingPool.requestExit(amount);
+        hevm.warp(now + exitDelay);
+
+        stakingPool.exit();
+        assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
+        assertTrue(ancestor.balanceOf(address(this)) >= 20 ether - 1); // full amount
+    }
+
+    function test_rewards_dripper_depleated_recharged() public {
+        uint amount = 7 ether;
+        // leave rewards only for 20 blocks
+        rewardDripper.transferTokenOut(address(0xfab), ancestor.balanceOf(address(rewardDripper)) - 20 ether);
+
+        ancestor.approve(address(stakingPool), amount);
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 32); // 32 blocks
+        uint previousBalance = ancestor.balanceOf(address(this));
+        stakingPool.getRewards();
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + 20 ether - 1); // full amount
+
+        hevm.roll(block.number + 32); // 32 blocks
+
+        ancestor.mint(address(rewardDripper), 5 ether);
+        stakingPool.getRewards();
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + 25 ether - 1);
+    }
+
+    function test_rewards_change_dripper_emission() public {
+        uint amount = 23 ether;
+
+        ancestor.approve(address(stakingPool), amount);
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 32); // 32 blocks
+        uint previousBalance = ancestor.balanceOf(address(this));
+        stakingPool.getRewards();
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + 32 ether - 1); // full amount
+
+        rewardDripper.modifyParameters("rewardPerBlock", 0.5 ether);
+        hevm.roll(block.number + 32); // 32 blocks
+
+        stakingPool.getRewards();
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + 48 ether - 1);
+    }
+
+    function test_deposit_rewards() public {
+        uint amount = 23 ether;
+
+        ancestor.approve(address(stakingPool), amount * 3);
+        uint previousBalance = ancestor.balanceOf(address(this));
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 32); // 32 blocks
+        stakingPool.join(amount);
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + 32 ether - 1 - (amount * 2)); // full amount
+
+        hevm.roll(block.number + 32); // 32 blocks
+
+        stakingPool.join(amount);
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + 64 ether - 1 - (amount * 3));
+    }
+
+    function test_rewards_over_long_intervals() public {
+        uint amount = 3.14 ether;
+        Caller user1 = new Caller(stakingPool);
+        ancestor.transfer(address(user1), amount);
+        Caller user2 = new Caller(stakingPool);
+        ancestor.transfer(address(user2), amount);
+
+        // users 1 & 2 join, same amount
+        user1.doJoin(amount);
+        hevm.roll(block.number + 1000000); // 1mm blocks
+
+        user2.doJoin(amount);
+        hevm.roll(block.number + 1); // 1 block
+
+        uint previousBalance1 = ancestor.balanceOf(address(user1));
+        uint previousBalance2 = ancestor.balanceOf(address(user2));
+        user1.doGetRewards();
+        user2.doGetRewards();
+
+        assertTrue(ancestor.balanceOf(address(user1)) >= previousBalance1 + 1000000.5 ether - 1);
+        assertTrue(ancestor.balanceOf(address(user1)) <= previousBalance1 + 1000000.5 ether);
+        assertTrue(ancestor.balanceOf(address(user2)) >= previousBalance2 + 0.5 ether - 1);
+        assertTrue(ancestor.balanceOf(address(user2)) <= previousBalance2 + 0.5 ether);
+
+        hevm.roll(block.number + 1); // 1 block
+
+        user1.doGetRewards();
+        user2.doGetRewards();
+        assertTrue(ancestor.balanceOf(address(user1)) >= previousBalance1 + 1000001 ether - 1);
+        assertTrue(ancestor.balanceOf(address(user1)) <= previousBalance1 + 1000001 ether);
+        assertTrue(ancestor.balanceOf(address(user2)) >= previousBalance2 + 1 ether - 1);
+        assertTrue(ancestor.balanceOf(address(user2)) <= previousBalance2 + 1 ether);
+    }
+
+    function test_get_rewards_externally_funded() public {
+        uint amount = 10 ether;
+
+        hevm.roll(block.number + 10);
+
+        stakingPool.updatePool(); // no effect
+
+        // join
+        ancestor.approve(address(stakingPool), uint(-1));
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 10); // 10 blocks
+
+        ancestor.mint(address(stakingPool.rewardPool()), 10 ether); // manually filling up contract
+
+        uint previousBalance = ancestor.balanceOf(address(this));
+        stakingPool.getRewards();
+        assertEq(ancestor.balanceOf(address(this)), previousBalance + 30 ether); // 1 eth per block + externally funded
+
+        hevm.roll(block.number + 4);
+        stakingPool.pullFunds(); // pulling rewards to conrtact without updating
+
+        hevm.roll(block.number + 4);
+        ancestor.mint(address(stakingPool.rewardPool()), 2 ether); // manually filling up contract
+
+        stakingPool.getRewards();
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + 40 ether - 1); // 1 eth per block, division rounding causes a slight loss of precision
     }
 
     function test_protocol_underwater() public {
