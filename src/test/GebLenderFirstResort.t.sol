@@ -2,7 +2,7 @@ pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
 import "ds-token/token.sol";
-import "../OffChainLenderFirstResort.sol";
+import "../GebLenderFirstResort.sol";
 
 abstract contract Hevm {
     function warp(uint) virtual public;
@@ -45,9 +45,9 @@ contract SAFEEngineMock {
 }
 
 contract Caller {
-    OffChainLenderFirstResort stakingPool;
+    GebLenderFirstResort stakingPool;
 
-    constructor (OffChainLenderFirstResort add) public {
+    constructor (GebLenderFirstResort add) public {
         stakingPool = add;
     }
 
@@ -82,21 +82,18 @@ contract Caller {
     }
 }
 
-contract OffChainLenderFirstResortTest is DSTest {
+contract GebLenderFirstResortTest is DSTest {
     Hevm hevm;
     DSToken ancestor;
     DSToken descendant;
-    OffChainLenderFirstResort stakingPool;
+    GebLenderFirstResort stakingPool;
     AuctionHouseMock auctionHouse;
     AccountingEngineMock accountingEngine;
     SAFEEngineMock safeEngine;
     Caller unauth;
 
     uint maxDelay = 48 weeks;
-    uint minExitWindow = 12 hours;
-    uint maxExitWindow = 30 days;
     uint exitDelay = 1 weeks;
-    uint exitWindow = 1 days;
     uint minStakedTokensToKeep = 10 ether;
     uint tokensToAuction  = 100 ether;
     uint systemCoinsToRequest = 1000 ether;
@@ -113,17 +110,14 @@ contract OffChainLenderFirstResortTest is DSTest {
         accountingEngine = new AccountingEngineMock();
         safeEngine = new SAFEEngineMock();
 
-        stakingPool = new OffChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -140,10 +134,7 @@ contract OffChainLenderFirstResortTest is DSTest {
         assertEq(address(stakingPool.descendant()), address(descendant));
         assertEq(address(stakingPool.auctionHouse()), address(auctionHouse));
         assertEq(stakingPool.MAX_DELAY(), maxDelay);
-        assertEq(stakingPool.MIN_EXIT_WINDOW(), minExitWindow);
-        assertEq(stakingPool.MAX_EXIT_WINDOW(), maxExitWindow);
         assertEq(stakingPool.exitDelay(), exitDelay);
-        assertEq(stakingPool.exitWindow(), exitWindow);
         assertEq(stakingPool.minStakedTokensToKeep(), minStakedTokensToKeep);
         assertEq(stakingPool.tokensToAuction(), tokensToAuction);
         assertEq(stakingPool.systemCoinsToRequest(), systemCoinsToRequest);
@@ -153,107 +144,14 @@ contract OffChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_maxDelay() public {
-        stakingPool = new OffChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
             0,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_maxExitWindow() public {
-        stakingPool = new OffChainLenderFirstResort(
-            address(ancestor),
-            address(descendant),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            maxDelay,
-            minExitWindow,
-            0,
-            exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_maxExitWindow2() public {
-        stakingPool = new OffChainLenderFirstResort(
-            address(ancestor),
-            address(descendant),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            maxDelay,
-            minExitWindow,
-            minExitWindow,
-            exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_minExitWindow() public {
-        stakingPool = new OffChainLenderFirstResort(
-            address(ancestor),
-            address(descendant),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            maxDelay,
-            0,
-            maxExitWindow,
-            exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_exitWindow() public {
-        stakingPool = new OffChainLenderFirstResort(
-            address(ancestor),
-            address(descendant),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            maxDelay,
-            minExitWindow,
-            maxExitWindow,
-            exitDelay,
-            minExitWindow - 1,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_exitWindow2() public {
-        stakingPool = new OffChainLenderFirstResort(
-            address(ancestor),
-            address(descendant),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            maxDelay,
-            minExitWindow,
-            maxExitWindow,
-            exitDelay,
-            maxExitWindow + 1,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -261,17 +159,14 @@ contract OffChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_minStakedTokensToKeep() public {
-        stakingPool = new OffChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             0,
             tokensToAuction,
             systemCoinsToRequest
@@ -279,17 +174,14 @@ contract OffChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_tokensToAuction() public {
-        stakingPool = new OffChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             0,
             systemCoinsToRequest
@@ -297,17 +189,14 @@ contract OffChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_systemCoinsToRequest() public {
-        stakingPool = new OffChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             0
@@ -315,17 +204,14 @@ contract OffChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_auctionHouse() public {
-        stakingPool = new OffChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(0),
             address(accountingEngine),
             address(safeEngine),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -333,17 +219,14 @@ contract OffChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_accountingEngine() public {
-        stakingPool = new OffChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(0),
             address(safeEngine),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -351,17 +234,14 @@ contract OffChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_safeEngine() public {
-        stakingPool = new OffChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(0),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -389,9 +269,6 @@ contract OffChainLenderFirstResortTest is DSTest {
     function test_modify_parameters() public {
         stakingPool.modifyParameters("exitDelay", maxDelay - 10);
         assertEq(stakingPool.exitDelay(), maxDelay - 10);
-
-        stakingPool.modifyParameters("exitWindow", maxExitWindow - 10);
-        assertEq(stakingPool.exitWindow(), maxExitWindow - 10);
 
         stakingPool.modifyParameters("minStakedTokensToKeep", 3);
         assertEq(stakingPool.minStakedTokensToKeep(), 3);
@@ -426,14 +303,6 @@ contract OffChainLenderFirstResortTest is DSTest {
 
     function testFail_modify_parameters_invalid_exit_delay() public {
         stakingPool.modifyParameters("exitDelay", maxDelay + 1);
-    }
-
-    function testFail_modify_parameters_invalid_exit_window() public {
-        stakingPool.modifyParameters("exitWindow", maxExitWindow + 1);
-    }
-
-    function testFail_modify_parameters_invalid_exit_window2() public {
-        stakingPool.modifyParameters("exitWindow", minExitWindow - 1);
     }
 
     function testFail_modify_parameters_invalid_min_tokens_to_keep() public {
@@ -516,8 +385,8 @@ contract OffChainLenderFirstResortTest is DSTest {
         stakingPool.requestExit();
         (uint start, uint end) = stakingPool.exitWindows(address(this));
 
-        assertEq(start, now + exitDelay);
-        assertEq(end, now + exitDelay + exitWindow);
+        assertEq(start, now);
+        assertEq(end, now + exitDelay);
     }
 
     function testFail_request_exit_before_window_ends() public {
@@ -525,7 +394,7 @@ contract OffChainLenderFirstResortTest is DSTest {
         stakingPool.join(1 ether);
 
         stakingPool.requestExit();
-        hevm.warp(now + exitDelay + exitWindow); // one sec to go
+        hevm.warp(now + exitDelay); // one sec to go
         stakingPool.requestExit();
     }
 

@@ -2,7 +2,7 @@ pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
 import "ds-token/token.sol";
-import "../OnChainLenderFirstResort.sol";
+import "../GebLenderFirstResortRewards.sol";
 import {RewardDripper} from "../RewardDripper.sol";
 
 abstract contract Hevm {
@@ -46,9 +46,9 @@ contract SAFEEngineMock {
 }
 
 contract Caller {
-    OnChainLenderFirstResort stakingPool;
+    GebLenderFirstResortRewards stakingPool;
 
-    constructor (OnChainLenderFirstResort add) public {
+    constructor (GebLenderFirstResortRewards add) public {
         stakingPool = add;
     }
 
@@ -86,11 +86,11 @@ contract Caller {
     }
 }
 
-contract OnChainLenderFirstResortTest is DSTest {
+contract GebLenderFirstResortRewardsTest is DSTest {
     Hevm hevm;
     DSToken rewardToken;
     DSToken ancestor;
-    OnChainLenderFirstResort stakingPool;
+    GebLenderFirstResortRewards stakingPool;
     AuctionHouseMock auctionHouse;
     AccountingEngineMock accountingEngine;
     SAFEEngineMock safeEngine;
@@ -120,7 +120,7 @@ contract OnChainLenderFirstResortTest is DSTest {
             1 ether               // rewardPerBlock
         );
 
-        stakingPool = new OnChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -158,7 +158,7 @@ contract OnChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_maxDelay() public {
-        stakingPool = new OnChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -174,7 +174,7 @@ contract OnChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_minStakedTokensToKeep() public {
-        stakingPool = new OnChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -190,7 +190,7 @@ contract OnChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_tokensToAuction() public {
-        stakingPool = new OnChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -206,7 +206,7 @@ contract OnChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_systemCoinsToRequest() public {
-        stakingPool = new OnChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -222,7 +222,7 @@ contract OnChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_auctionHouse() public {
-        stakingPool = new OnChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
             address(rewardToken),
             address(0),
@@ -238,7 +238,7 @@ contract OnChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_accountingEngine() public {
-        stakingPool = new OnChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -254,7 +254,7 @@ contract OnChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_safeEngine() public {
-        stakingPool = new OnChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -270,7 +270,7 @@ contract OnChainLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_rewardsDripper() public {
-        stakingPool = new OnChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
             address(rewardToken),
             address(auctionHouse),
@@ -923,10 +923,10 @@ contract OnChainLenderFirstResortTest is DSTest {
     }
 }
 
-contract OnChainLenderFirstResortSameTokenTest is DSTest {
+contract GebLenderFirstResortRewardsSameTokenTest is DSTest {
     Hevm hevm;
     DSToken ancestor;
-    OnChainLenderFirstResort stakingPool;
+    GebLenderFirstResortRewards stakingPool;
     AuctionHouseMock auctionHouse;
     AccountingEngineMock accountingEngine;
     SAFEEngineMock safeEngine;
@@ -955,7 +955,7 @@ contract OnChainLenderFirstResortSameTokenTest is DSTest {
             1 ether               // rewardPerBlock
         );
 
-        stakingPool = new OnChainLenderFirstResort(
+        stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
             address(ancestor),
             address(auctionHouse),

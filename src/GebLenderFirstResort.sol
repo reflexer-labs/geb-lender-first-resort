@@ -42,7 +42,7 @@ abstract contract SAFEEngineLike {
     function debtBalance(address) virtual public view returns (uint256);
 }
 
-contract OffChainLenderFirstResort is ReentrancyGuard {
+contract GebLenderFirstResort is ReentrancyGuard {
     // --- Auth ---
     mapping (address => uint) public authorizedAccounts;
     /**
@@ -88,8 +88,6 @@ contract OffChainLenderFirstResort is ReentrancyGuard {
     uint256   public lastRewardBlock;
     // The current delay enforced on an exit
     uint256   public exitDelay;
-    // Time during which an address can exit without requesting a new window
-    uint256   public exitWindow;
     // Min maount of ancestor tokens that must remain in the contract and not be auctioned
     uint256   public minStakedTokensToKeep;
     // Max number of auctions that can be active at a time
@@ -115,10 +113,6 @@ contract OffChainLenderFirstResort is ReentrancyGuard {
 
     // Max delay that can be enforced for an exit
     uint256 public immutable MAX_DELAY;
-    // Minimum exit window during which an address can exit without waiting again for another window
-    uint256 public immutable MIN_EXIT_WINDOW;
-    // Max exit window during which an address can exit without waiting again for another window
-    uint256 public immutable MAX_EXIT_WINDOW;
 
     // --- Events ---
     event AddAuthorization(address account);
@@ -140,19 +134,13 @@ contract OffChainLenderFirstResort is ReentrancyGuard {
       address accountingEngine_,
       address safeEngine_,
       uint256 maxDelay_,
-      uint256 minExitWindow_,
-      uint256 maxExitWindow_,
       uint256 exitDelay_,
-      uint256 exitWindow_,
       uint256 minStakedTokensToKeep_,
       uint256 tokensToAuction_,
       uint256 systemCoinsToRequest_
     ) public {
         require(maxDelay_ > 0, "ProtocolTokenLenderFirstResort/null-max-delay");
-        require(both(maxExitWindow_ > 0, maxExitWindow_ > minExitWindow_), "ProtocolTokenLenderFirstResort/invalid-max-exit-window");
-        require(minExitWindow_ > 0, "ProtocolTokenLenderFirstResort/invalid-min-exit-window");
         require(exitDelay_ <= maxDelay_, "ProtocolTokenLenderFirstResort/invalid-exit-delay");
-        require(both(exitWindow_ >= minExitWindow_, exitWindow_ <= maxExitWindow_), "ProtocolTokenLenderFirstResort/invalid-exit-window");
         require(minStakedTokensToKeep_ > 0, "ProtocolTokenLenderFirstResort/null-min-staked-tokens");
         require(tokensToAuction_ > 0, "ProtocolTokenLenderFirstResort/null-tokens-to-auction");
         require(systemCoinsToRequest_ > 0, "ProtocolTokenLenderFirstResort/null-sys-coins-to-request");
@@ -165,11 +153,8 @@ contract OffChainLenderFirstResort is ReentrancyGuard {
         maxConcurrentAuctions          = uint(-1);
 
         MAX_DELAY                      = maxDelay_;
-        MIN_EXIT_WINDOW                = minExitWindow_;
-        MAX_EXIT_WINDOW                = maxExitWindow_;
 
         exitDelay                      = exitDelay_;
-        exitWindow                     = exitWindow_;
 
         minStakedTokensToKeep          = minStakedTokensToKeep_;
         tokensToAuction                = tokensToAuction_;
@@ -247,10 +232,6 @@ contract OffChainLenderFirstResort is ReentrancyGuard {
         if (parameter == "exitDelay") {
           require(data <= MAX_DELAY, "ProtocolTokenLenderFirstResort/invalid-exit-delay");
           exitDelay = data;
-        }
-        else if (parameter == "exitWindow") {
-          require(both(data >= MIN_EXIT_WINDOW, data <= MAX_EXIT_WINDOW), "ProtocolTokenLenderFirstResort/invalid-exit-window");
-          exitWindow = data;
         }
         else if (parameter == "minStakedTokensToKeep") {
           require(data > 0, "ProtocolTokenLenderFirstResort/null-min-staked-tokens");
@@ -390,8 +371,8 @@ contract OffChainLenderFirstResort is ReentrancyGuard {
     */
     function requestExit() public {
         require(now > exitWindows[msg.sender].end, "ProtocolTokenLenderFirstResort/ongoing-request");
-        exitWindows[msg.sender].start = addition(now, exitDelay);
-        exitWindows[msg.sender].end   = addition(exitWindows[msg.sender].start, exitWindow);
+        exitWindows[msg.sender].start = now;
+        exitWindows[msg.sender].end   = addition(now, exitDelay);
         emit RequestExit(msg.sender, exitWindows[msg.sender].start, exitWindows[msg.sender].end);
     }
     /*
