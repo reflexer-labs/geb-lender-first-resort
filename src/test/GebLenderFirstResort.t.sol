@@ -72,13 +72,13 @@ contract Caller {
         stakingPool.join(wad);
     }
 
-    function doRequestExit() public {
-        stakingPool.requestExit();
+    function doRequestExit(uint wad) public {
+        stakingPool.requestExit(wad);
     }
 
-    function doExit(uint wad) public {
+    function doExit() public {
         stakingPool.descendant().approve(address(stakingPool), uint(-1));
-        stakingPool.exit(wad);
+        stakingPool.exit();
     }
 }
 
@@ -382,20 +382,20 @@ contract GebLenderFirstResortTest is DSTest {
         ancestor.approve(address(stakingPool), 1 ether);
         stakingPool.join(1 ether);
 
-        stakingPool.requestExit();
-        (uint start, uint end) = stakingPool.exitWindows(address(this));
+        stakingPool.requestExit(1 ether);
+        (uint deadline, uint wad) = stakingPool.exitRequests(address(this));
 
-        assertEq(start, now);
-        assertEq(end, now + exitDelay);
+        assertEq(deadline, now + exitDelay);
+        assertEq(wad, 1 ether);
     }
 
     function testFail_request_exit_before_window_ends() public {
         ancestor.approve(address(stakingPool), 1 ether);
         stakingPool.join(1 ether);
 
-        stakingPool.requestExit();
+        stakingPool.requestExit(1 ether);
         hevm.warp(now + exitDelay); // one sec to go
-        stakingPool.requestExit();
+        stakingPool.requestExit(1 ether);
     }
 
     function test_exit() public {
@@ -405,7 +405,7 @@ contract GebLenderFirstResortTest is DSTest {
         stakingPool.join(amount);
 
         // request exit
-        stakingPool.requestExit();
+        stakingPool.requestExit(amount);
 
         // exit
         hevm.warp(now + exitDelay);
@@ -414,58 +414,19 @@ contract GebLenderFirstResortTest is DSTest {
 
         uint previousBalance = ancestor.balanceOf(address(this));
 
-        stakingPool.exit(amount);
+        stakingPool.exit();
         assertEq(ancestor.balanceOf(address(this)), previousBalance + price);
         assertEq(descendant.balanceOf(address(this)), 0);
     }
 
-    function testFail_exit_null_amount() public {
+    function testFail_requestExit_null_amount() public {
         uint amount = 10 ether;
         // join
         ancestor.approve(address(stakingPool), amount);
         stakingPool.join(amount);
 
         // request exit
-        stakingPool.requestExit();
-
-        // exit
-        hevm.warp(now + exitDelay);
-        descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
-        stakingPool.exit(0);
-    }
-
-    function testFail_exit_after_window() public {
-        uint amount = 1 ether;
-        // join
-        ancestor.approve(address(stakingPool), amount);
-        stakingPool.join(amount);
-
-        // request exit
-        stakingPool.requestExit();
-
-        // exit
-        (, uint end) = stakingPool.exitWindows(address(this));
-
-        hevm.warp(end + 1);
-        descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
-        stakingPool.exit(amount);
-    }
-
-    function testFail_exit_before_window() public {
-        uint amount = 1 ether;
-        // join
-        ancestor.approve(address(stakingPool), amount);
-        stakingPool.join(amount);
-
-        // request exit
-        stakingPool.requestExit();
-
-        // exit
-        (uint start,) = stakingPool.exitWindows(address(this));
-
-        hevm.warp(start - 1);
-        descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
-        stakingPool.exit(amount);
+        stakingPool.requestExit(0);
     }
 
     function testFail_exit_no_request() public {
@@ -481,7 +442,7 @@ contract GebLenderFirstResortTest is DSTest {
         hevm.warp(now + exitDelay);
         descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
 
-        stakingPool.exit(amount);
+        stakingPool.exit();
     }
 
     function testFail_exit_underwater() public {
@@ -491,7 +452,7 @@ contract GebLenderFirstResortTest is DSTest {
         stakingPool.join(amount);
 
         // request exit
-        stakingPool.requestExit();
+        stakingPool.requestExit(amount);
 
         // exit
         hevm.warp(now + exitDelay);
@@ -499,7 +460,7 @@ contract GebLenderFirstResortTest is DSTest {
 
         accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
 
-        stakingPool.exit(amount);
+        stakingPool.exit();
     }
 
     function test_exit_forced_underwater() public {
@@ -509,7 +470,7 @@ contract GebLenderFirstResortTest is DSTest {
         stakingPool.join(amount);
 
         // request exit
-        stakingPool.requestExit();
+        stakingPool.requestExit(amount);
 
         // exit
         hevm.warp(now + exitDelay);
@@ -519,7 +480,7 @@ contract GebLenderFirstResortTest is DSTest {
 
         stakingPool.toggleForcedExit();
 
-        stakingPool.exit(amount);
+        stakingPool.exit();
     }
 
     function test_auction_ancestor_tokens() public {
@@ -576,13 +537,13 @@ contract GebLenderFirstResortTest is DSTest {
         assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
 
         // exiting (after slash)
-        stakingPool.requestExit();
+        stakingPool.requestExit(amount);
         hevm.warp(now + exitDelay);
         descendant.approve(address(stakingPool), uint(-1));
 
         accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 90 ether); // above water
 
-        stakingPool.exit(amount);
+        stakingPool.exit();
         assertEq(ancestor.balanceOf(address(this)), previousBalance - 100 ether);
         assertEq(descendant.balanceOf(address(this)), 0);
     }
@@ -615,14 +576,14 @@ contract GebLenderFirstResortTest is DSTest {
         assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
 
         // exiting (after slash)
-        user1.doRequestExit();
-        user2.doRequestExit();
+        user1.doRequestExit(amount);
+        user2.doRequestExit(amount);
         hevm.warp(now + exitDelay);
 
         accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 90 ether); // above water
 
-        user1.doExit(amount);
-        user2.doExit(amount);
+        user1.doExit();
+        user2.doExit();
 
         assertAlmostEqual(ancestor.balanceOf(address(user1)), previousBalance1 - 50 ether, 1);
         assertEq(descendant.balanceOf(address(user1)), 0);

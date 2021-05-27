@@ -358,11 +358,10 @@ contract GebLenderFirstResortRewards is ReentrancyGuard {
     */
     function protocolUnderwater() public view returns (bool) {
         uint256 unqueuedUnauctionedDebt = accountingEngine.unqueuedUnauctionedDebt();
-        uint256 coinBalance             = safeEngine.coinBalance(address(accountingEngine));
 
         return both(
           accountingEngine.debtAuctionBidSize() <= unqueuedUnauctionedDebt,
-          unqueuedUnauctionedDebt >= addition(coinBalance, accountingEngine.debtAuctionBidSize())
+          safeEngine.coinBalance(address(accountingEngine)) < unqueuedUnauctionedDebt
         );
     }
 
@@ -485,7 +484,7 @@ contract GebLenderFirstResortRewards is ReentrancyGuard {
     /*
     * @notify Exit ancestor tokens
     */
-    function exit() external {
+    function exit() external nonReentrant {
         require(both(now >= exitRequests[msg.sender].deadline, exitRequests[msg.sender].lockedAmount > 0), "ProtocolTokenLenderFirstResort/wait-more");
         require(either(!protocolUnderwater(), forcedExit), "ProtocolTokenLenderFirstResort/exit-not-allowed");
 
