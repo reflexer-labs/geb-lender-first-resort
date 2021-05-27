@@ -1,4 +1,4 @@
-/// LPTokenLenderFirstResort.sol
+/// GebLenderFirstResortRewards.sol
 
 // Copyright (C) 2021 Reflexer Labs, INC
 //
@@ -48,7 +48,7 @@ abstract contract RewardDripperLike {
     function rewardToken() virtual external returns (TokenLike);
 }
 
-// Stores tokens, owned by LenderFirstResort
+// Stores tokens, owned by GebLenderFirstResortRewards
 contract TokenPool {
     TokenLike public token;
     address   public owner;
