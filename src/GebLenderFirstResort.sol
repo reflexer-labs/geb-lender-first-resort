@@ -70,11 +70,11 @@ contract GebLenderFirstResort is ReentrancyGuard {
     }
 
     // --- Structs ---
-    struct ExitWindow {
-        // Start time when the exit can happen
-        uint256 start;
+    struct ExitRequest {
         // Exit window deadline
-        uint256 end;
+        uint256 deadline;
+        // Ancestor amount queued for exit
+        uint256 lockedAmount;
     }
 
     // --- Variables ---
@@ -98,7 +98,7 @@ contract GebLenderFirstResort is ReentrancyGuard {
     uint256   public systemCoinsToRequest;
 
     // Exit data
-    mapping(address => ExitWindow) public exitWindows;
+    mapping(address => ExitRequest) public exitRequests;
 
     // The token being deposited in the pool
     TokenLike            public ancestor;
@@ -368,26 +368,28 @@ contract GebLenderFirstResort is ReentrancyGuard {
     }
     /*
     * @notice Request a new exit window during which you can burn descendant tokens in exchange for ancestor tokens
+    * @param wad The amount of tokens to exit
     */
-    function requestExit() public {
-        require(now > exitWindows[msg.sender].end, "ProtocolTokenLenderFirstResort/ongoing-request");
-        exitWindows[msg.sender].start = now;
-        exitWindows[msg.sender].end   = addition(now, exitDelay);
-        emit RequestExit(msg.sender, exitWindows[msg.sender].start, exitWindows[msg.sender].end);
+    function requestExit(uint wad) public {
+        require(wad > 0, "ProtocolTokenLenderFirstResort/null-amount-to-exit");
+        require(now > exitRequests[msg.sender].deadline, "ProtocolTokenLenderFirstResort/ongoing-request");
+        exitRequests[msg.sender].deadline   = addition(now, exitDelay);
+        exitRequests[msg.sender].lockedAmount  = addition(exitRequests[msg.sender].lockedAmount, wad);
+
+        emit RequestExit(msg.sender, exitRequests[msg.sender].deadline, wad);
     }
     /*
     * @notify Burn descendant tokens in exchange for getting ancestor tokens from this contract
-    * @param wad The amount of descendant tokens to exit/burn
     */
-    function exit(uint256 wad) public nonReentrant {
-        require(wad > 0, "ProtocolTokenLenderFirstResort/null-descendant-to-burn");
-        require(both(both(now >= exitWindows[msg.sender].start, now <= exitWindows[msg.sender].end), exitWindows[msg.sender].end > 0), "ProtocolTokenLenderFirstResort/not-in-window");
+    function exit() public nonReentrant {
+        require(both(now >= exitRequests[msg.sender].deadline, exitRequests[msg.sender].lockedAmount > 0), "ProtocolTokenLenderFirstResort/wait-more");
         require(either(!protocolUnderwater(), forcedExit), "ProtocolTokenLenderFirstResort/exit-not-allowed");
 
-        uint256 price = exitPrice(wad);
+        uint256 price = exitPrice(exitRequests[msg.sender].lockedAmount);
 
         require(ancestor.transfer(msg.sender, price), "ProtocolTokenLenderFirstResort/could-not-transfer-ancestor");
-        descendant.burn(msg.sender, wad);
-        emit Exit(msg.sender, price, wad);
+        descendant.burn(msg.sender, exitRequests[msg.sender].lockedAmount);
+        emit Exit(msg.sender, price, exitRequests[msg.sender].lockedAmount);
+        delete exitRequests[msg.sender];
     }
 }

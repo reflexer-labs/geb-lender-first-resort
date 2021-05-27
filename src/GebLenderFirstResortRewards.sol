@@ -485,7 +485,7 @@ contract GebLenderFirstResortRewards is ReentrancyGuard {
     /*
     * @notify Exit ancestor tokens
     */
-    function exit() external {
+    function exit() external nonReentrant {
         require(both(now >= exitRequests[msg.sender].deadline, exitRequests[msg.sender].lockedAmount > 0), "ProtocolTokenLenderFirstResort/wait-more");
         require(either(!protocolUnderwater(), forcedExit), "ProtocolTokenLenderFirstResort/exit-not-allowed");
 
