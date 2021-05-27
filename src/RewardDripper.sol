@@ -146,6 +146,12 @@ contract RewardDripper {
     * @notify Send rewards to the requestor
     */
     function dripReward() external {
+        dripReward(msg.sender);
+    }
+    /*
+    * @notify Send rewards to an address defined by the requestor
+    */
+    function dripReward(address to) public {
         if (lastRewardBlock >= block.number) return;
         require(msg.sender == requestor, "RewardDripper/invalid-caller");
 
@@ -156,8 +162,8 @@ contract RewardDripper {
         lastRewardBlock = block.number;
 
         if (amountToTransfer == 0) return;
-        rewardToken.transfer(requestor, amountToTransfer);
+        rewardToken.transfer(to, amountToTransfer);
 
-        emit DripReward(requestor, amountToTransfer);
+        emit DripReward(to, amountToTransfer);
     }
 }

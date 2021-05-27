@@ -2,7 +2,7 @@ pragma solidity ^0.6.7;
 
 import "ds-test/test.sol";
 import "ds-token/token.sol";
-import "../ProtocolTokenLenderFirstResort.sol";
+import "../GebLenderFirstResort.sol";
 
 abstract contract Hevm {
     function warp(uint) virtual public;
@@ -43,18 +43,11 @@ contract SAFEEngineMock {
         else revert("unrecognized param");
     }
 }
-contract RewardDripperMock {
-    uint public drips;
-
-    function dripReward() external {
-        drips++;
-    }
-}
 
 contract Caller {
-    ProtocolTokenLenderFirstResort stakingPool;
+    GebLenderFirstResort stakingPool;
 
-    constructor (ProtocolTokenLenderFirstResort add) public {
+    constructor (GebLenderFirstResort add) public {
         stakingPool = add;
     }
 
@@ -89,22 +82,18 @@ contract Caller {
     }
 }
 
-contract ProtocolTokenLenderFirstResortTest is DSTest {
+contract GebLenderFirstResortTest is DSTest {
     Hevm hevm;
     DSToken ancestor;
     DSToken descendant;
-    ProtocolTokenLenderFirstResort stakingPool;
+    GebLenderFirstResort stakingPool;
     AuctionHouseMock auctionHouse;
     AccountingEngineMock accountingEngine;
     SAFEEngineMock safeEngine;
-    RewardDripperMock rewardDripper;
     Caller unauth;
 
     uint maxDelay = 48 weeks;
-    uint minExitWindow = 12 hours;
-    uint maxExitWindow = 30 days;
     uint exitDelay = 1 weeks;
-    uint exitWindow = 1 days;
     uint minStakedTokensToKeep = 10 ether;
     uint tokensToAuction  = 100 ether;
     uint systemCoinsToRequest = 1000 ether;
@@ -120,20 +109,15 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         auctionHouse = new AuctionHouseMock(address(ancestor));
         accountingEngine = new AccountingEngineMock();
         safeEngine = new SAFEEngineMock();
-        rewardDripper = new RewardDripperMock();
 
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
-            address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -149,12 +133,8 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         assertEq(address(stakingPool.ancestor()), address(ancestor));
         assertEq(address(stakingPool.descendant()), address(descendant));
         assertEq(address(stakingPool.auctionHouse()), address(auctionHouse));
-        assertEq(address(stakingPool.rewardDripper()), address(rewardDripper));
         assertEq(stakingPool.MAX_DELAY(), maxDelay);
-        assertEq(stakingPool.MIN_EXIT_WINDOW(), minExitWindow);
-        assertEq(stakingPool.MAX_EXIT_WINDOW(), maxExitWindow);
         assertEq(stakingPool.exitDelay(), exitDelay);
-        assertEq(stakingPool.exitWindow(), exitWindow);
         assertEq(stakingPool.minStakedTokensToKeep(), minStakedTokensToKeep);
         assertEq(stakingPool.tokensToAuction(), tokensToAuction);
         assertEq(stakingPool.systemCoinsToRequest(), systemCoinsToRequest);
@@ -164,113 +144,14 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_maxDelay() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
-            address(rewardDripper),
-            0,
-            minExitWindow,
-            maxExitWindow,
-            exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_maxExitWindow() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
-            address(ancestor),
-            address(descendant),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(rewardDripper),
-            maxDelay,
-            minExitWindow,
             0,
             exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_maxExitWindow2() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
-            address(ancestor),
-            address(descendant),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(rewardDripper),
-            maxDelay,
-            minExitWindow,
-            minExitWindow,
-            exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_minExitWindow() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
-            address(ancestor),
-            address(descendant),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(rewardDripper),
-            maxDelay,
-            0,
-            maxExitWindow,
-            exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_exitWindow() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
-            address(ancestor),
-            address(descendant),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(rewardDripper),
-            maxDelay,
-            minExitWindow,
-            maxExitWindow,
-            exitDelay,
-            minExitWindow - 1,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_exitWindow2() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
-            address(ancestor),
-            address(descendant),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(rewardDripper),
-            maxDelay,
-            minExitWindow,
-            maxExitWindow,
-            exitDelay,
-            maxExitWindow + 1,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -278,18 +159,14 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_minStakedTokensToKeep() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
-            address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             0,
             tokensToAuction,
             systemCoinsToRequest
@@ -297,18 +174,14 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_tokensToAuction() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
-            address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             0,
             systemCoinsToRequest
@@ -316,18 +189,14 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_systemCoinsToRequest() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(safeEngine),
-            address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             0
@@ -335,18 +204,14 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_auctionHouse() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(0),
             address(accountingEngine),
             address(safeEngine),
-            address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -354,18 +219,14 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_accountingEngine() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(0),
             address(safeEngine),
-            address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -373,37 +234,14 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
     }
 
     function testFail_setup_invalid_safeEngine() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
+        stakingPool = new GebLenderFirstResort(
             address(ancestor),
             address(descendant),
             address(auctionHouse),
             address(accountingEngine),
             address(0),
-            address(rewardDripper),
             maxDelay,
-            minExitWindow,
-            maxExitWindow,
             exitDelay,
-            exitWindow,
-            minStakedTokensToKeep,
-            tokensToAuction,
-            systemCoinsToRequest
-        );
-    }
-
-    function testFail_setup_invalid_rewardsDripper() public {
-        stakingPool = new ProtocolTokenLenderFirstResort(
-            address(ancestor),
-            address(descendant),
-            address(auctionHouse),
-            address(accountingEngine),
-            address(safeEngine),
-            address(0),
-            maxDelay,
-            minExitWindow,
-            maxExitWindow,
-            exitDelay,
-            exitWindow,
             minStakedTokensToKeep,
             tokensToAuction,
             systemCoinsToRequest
@@ -432,9 +270,6 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         stakingPool.modifyParameters("exitDelay", maxDelay - 10);
         assertEq(stakingPool.exitDelay(), maxDelay - 10);
 
-        stakingPool.modifyParameters("exitWindow", maxExitWindow - 10);
-        assertEq(stakingPool.exitWindow(), maxExitWindow - 10);
-
         stakingPool.modifyParameters("minStakedTokensToKeep", 3);
         assertEq(stakingPool.minStakedTokensToKeep(), 3);
 
@@ -452,13 +287,10 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
 
         stakingPool.modifyParameters("accountingEngine", address(4));
         assertEq(address(stakingPool.accountingEngine()), address(4));
-
-        stakingPool.modifyParameters("rewardDripper", address(5));
-        assertEq(address(stakingPool.rewardDripper()), address(5));
     }
 
     function testFail_modify_parameters_null_address() public {
-        stakingPool.modifyParameters("rewardDripper", address(0));
+        stakingPool.modifyParameters("accountingEngine", address(0));
     }
 
     function testFail_modify_parameters_invalid_param_address() public {
@@ -471,14 +303,6 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
 
     function testFail_modify_parameters_invalid_exit_delay() public {
         stakingPool.modifyParameters("exitDelay", maxDelay + 1);
-    }
-
-    function testFail_modify_parameters_invalid_exit_window() public {
-        stakingPool.modifyParameters("exitWindow", maxExitWindow + 1);
-    }
-
-    function testFail_modify_parameters_invalid_exit_window2() public {
-        stakingPool.modifyParameters("exitWindow", minExitWindow - 1);
     }
 
     function testFail_modify_parameters_invalid_min_tokens_to_keep() public {
@@ -515,7 +339,6 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
 
         assertEq(ancestor.balanceOf(address(stakingPool)), amount);
         assertEq(descendant.balanceOf(address(this)),price);
-        assertEq(rewardDripper.drips(), 1);
     }
 
     function testFail_join_invalid_ammount() public {
@@ -562,8 +385,8 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         stakingPool.requestExit();
         (uint start, uint end) = stakingPool.exitWindows(address(this));
 
-        assertEq(start, now + exitDelay);
-        assertEq(end, now + exitDelay + exitWindow);
+        assertEq(start, now);
+        assertEq(end, now + exitDelay);
     }
 
     function testFail_request_exit_before_window_ends() public {
@@ -571,7 +394,7 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         stakingPool.join(1 ether);
 
         stakingPool.requestExit();
-        hevm.warp(now + exitDelay + exitWindow); // one sec to go
+        hevm.warp(now + exitDelay); // one sec to go
         stakingPool.requestExit();
     }
 
@@ -807,52 +630,22 @@ contract ProtocolTokenLenderFirstResortTest is DSTest {
         assertEq(descendant.balanceOf(address(user2)), 0);
     }
 
-    function test_rewards() public {
-        uint amount = 2 ether;
-        // join
-        uint previousBalance = ancestor.balanceOf(address(this));
-        ancestor.approve(address(stakingPool), uint(-1));
-        stakingPool.join(amount);
+    function test_protocol_underwater() public {
+        // protocolUnderwater == false when unqueuedUnauctionedDebt < safeEngine.coinBalance(accountingEngine) + debtAuctionBidSize
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+        safeEngine.modifyBalance("coin", address(accountingEngine), 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1);
+        assertTrue(!stakingPool.protocolUnderwater());
 
-        // request exit
-        stakingPool.requestExit();
+        // protocolUnderwater == true when unqueuedUnauctionedDebt >= safeEngine.coinBalance(accountingEngine) + debtAuctionBidSize
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether + 1);
+        safeEngine.modifyBalance("coin", address(accountingEngine), 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1);
+        assertTrue(stakingPool.protocolUnderwater());
 
-        // exit
-        hevm.warp(now + exitDelay);
-        ancestor.mint(address(stakingPool), 33 ether);
-        descendant.approve(address(stakingPool), uint(-1)); // necessary, should be handled by proxyActions
-
-        stakingPool.exit(amount);
-        assertEq(ancestor.balanceOf(address(this)), previousBalance + 33 ether);
-        assertEq(descendant.balanceOf(address(this)), 0);
-    }
-
-    function test_rewards_2_users() public {
-        uint amount = 34 ether;
-        Caller user1 = new Caller(stakingPool);
-        ancestor.transfer(address(user1), amount);
-        Caller user2 = new Caller(stakingPool);
-        ancestor.transfer(address(user2), amount * 3);
-
-        uint previousBalance1 = ancestor.balanceOf(address(user1));
-        uint previousBalance2 = ancestor.balanceOf(address(user2));
-
-        // join
-        user1.doJoin(amount);
-        user2.doJoin(amount);
-
-        // exiting
-        user1.doRequestExit();
-        user2.doRequestExit();
-        hevm.warp(now + exitDelay);
-        ancestor.mint(address(stakingPool), 24 ether);
-
-        user1.doExit(amount);
-        user2.doExit(amount);
-
-        assertAlmostEqual(ancestor.balanceOf(address(user1)), previousBalance1 + 6 ether, 1);
-        assertEq(descendant.balanceOf(address(user1)), 0);
-        assertAlmostEqual(ancestor.balanceOf(address(user2)), previousBalance2 + 18 ether, 1);
-        assertEq(descendant.balanceOf(address(user2)), 0);
+        // protocolUnderwater == false when accountingEngine.debtAuctionBidSize() > unqueuedUnauctionedDebt
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
+        accountingEngine.modifyParameters("debtAuctionBidSize", 1000 ether + 1);
+        assertTrue(!stakingPool.protocolUnderwater());
     }
 }

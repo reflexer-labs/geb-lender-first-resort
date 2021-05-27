@@ -41,11 +41,8 @@ abstract contract SAFEEngineLike {
     function coinBalance(address) virtual public view returns (uint256);
     function debtBalance(address) virtual public view returns (uint256);
 }
-abstract contract RewardDripperLike {
-    function dripReward() virtual external;
-}
 
-contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
+contract GebLenderFirstResort is ReentrancyGuard {
     // --- Auth ---
     mapping (address => uint) public authorizedAccounts;
     /**
@@ -91,8 +88,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     uint256   public lastRewardBlock;
     // The current delay enforced on an exit
     uint256   public exitDelay;
-    // Time during which an address can exit without requesting a new window
-    uint256   public exitWindow;
     // Min maount of ancestor tokens that must remain in the contract and not be auctioned
     uint256   public minStakedTokensToKeep;
     // Max number of auctions that can be active at a time
@@ -115,15 +110,9 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     AccountingEngineLike public accountingEngine;
     // The safe engine contract
     SAFEEngineLike       public safeEngine;
-    // Contract that drips rewards
-    RewardDripperLike    public rewardDripper;
 
     // Max delay that can be enforced for an exit
     uint256 public immutable MAX_DELAY;
-    // Minimum exit window during which an address can exit without waiting again for another window
-    uint256 public immutable MIN_EXIT_WINDOW;
-    // Max exit window during which an address can exit without waiting again for another window
-    uint256 public immutable MAX_EXIT_WINDOW;
 
     // --- Events ---
     event AddAuthorization(address account);
@@ -144,39 +133,28 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
       address auctionHouse_,
       address accountingEngine_,
       address safeEngine_,
-      address rewardDripper_,
       uint256 maxDelay_,
-      uint256 minExitWindow_,
-      uint256 maxExitWindow_,
       uint256 exitDelay_,
-      uint256 exitWindow_,
       uint256 minStakedTokensToKeep_,
       uint256 tokensToAuction_,
       uint256 systemCoinsToRequest_
     ) public {
         require(maxDelay_ > 0, "ProtocolTokenLenderFirstResort/null-max-delay");
-        require(both(maxExitWindow_ > 0, maxExitWindow_ > minExitWindow_), "ProtocolTokenLenderFirstResort/invalid-max-exit-window");
-        require(minExitWindow_ > 0, "ProtocolTokenLenderFirstResort/invalid-min-exit-window");
         require(exitDelay_ <= maxDelay_, "ProtocolTokenLenderFirstResort/invalid-exit-delay");
-        require(both(exitWindow_ >= minExitWindow_, exitWindow_ <= maxExitWindow_), "ProtocolTokenLenderFirstResort/invalid-exit-window");
         require(minStakedTokensToKeep_ > 0, "ProtocolTokenLenderFirstResort/null-min-staked-tokens");
         require(tokensToAuction_ > 0, "ProtocolTokenLenderFirstResort/null-tokens-to-auction");
         require(systemCoinsToRequest_ > 0, "ProtocolTokenLenderFirstResort/null-sys-coins-to-request");
         require(auctionHouse_ != address(0), "ProtocolTokenLenderFirstResort/null-auction-house");
         require(accountingEngine_ != address(0), "ProtocolTokenLenderFirstResort/null-accounting-engine");
         require(safeEngine_ != address(0), "ProtocolTokenLenderFirstResort/null-safe-engine");
-        require(rewardDripper_ != address(0), "ProtocolTokenLenderFirstResort/null-reward-dripper");
 
         authorizedAccounts[msg.sender] = 1;
         canJoin                        = true;
         maxConcurrentAuctions          = uint(-1);
 
         MAX_DELAY                      = maxDelay_;
-        MIN_EXIT_WINDOW                = minExitWindow_;
-        MAX_EXIT_WINDOW                = maxExitWindow_;
 
         exitDelay                      = exitDelay_;
-        exitWindow                     = exitWindow_;
 
         minStakedTokensToKeep          = minStakedTokensToKeep_;
         tokensToAuction                = tokensToAuction_;
@@ -185,7 +163,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         auctionHouse                   = AuctionHouseLike(auctionHouse_);
         accountingEngine               = AccountingEngineLike(accountingEngine_);
         safeEngine                     = SAFEEngineLike(safeEngine_);
-        rewardDripper                  = RewardDripperLike(rewardDripper_);
 
         ancestor                       = TokenLike(ancestor_);
         descendant                     = TokenLike(descendant_);
@@ -209,6 +186,9 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
 
     function addition(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x + y) >= x, "ProtocolTokenLenderFirstResort/add-overflow");
+    }
+    function subtract(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "ProtocolTokenLenderFirstResort/sub-uint-uint-underflow");
     }
     function multiply(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x, "ProtocolTokenLenderFirstResort/mul-overflow");
@@ -253,10 +233,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
           require(data <= MAX_DELAY, "ProtocolTokenLenderFirstResort/invalid-exit-delay");
           exitDelay = data;
         }
-        else if (parameter == "exitWindow") {
-          require(both(data >= MIN_EXIT_WINDOW, data <= MAX_EXIT_WINDOW), "ProtocolTokenLenderFirstResort/invalid-exit-window");
-          exitWindow = data;
-        }
         else if (parameter == "minStakedTokensToKeep") {
           require(data > 0, "ProtocolTokenLenderFirstResort/null-min-staked-tokens");
           minStakedTokensToKeep = data;
@@ -289,9 +265,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         }
         else if (parameter == "accountingEngine") {
           accountingEngine = AccountingEngineLike(data);
-        }
-        else if (parameter == "rewardDripper") {
-          rewardDripper = RewardDripperLike(data);
         }
         else revert("ProtocolTokenLenderFirstResort/modify-unrecognized-param");
         emit ModifyParameters(parameter, data);
@@ -336,10 +309,11 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     */
     function protocolUnderwater() public view returns (bool) {
         uint256 unqueuedUnauctionedDebt = accountingEngine.unqueuedUnauctionedDebt();
+        uint256 coinBalance             = safeEngine.coinBalance(address(accountingEngine));
 
         return both(
           accountingEngine.debtAuctionBidSize() <= unqueuedUnauctionedDebt,
-          safeEngine.coinBalance(address(accountingEngine)) < unqueuedUnauctionedDebt
+          unqueuedUnauctionedDebt >= addition(coinBalance, accountingEngine.debtAuctionBidSize())
         );
     }
 
@@ -364,15 +338,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     }
 
     // --- Core Logic ---
-    /*
-    * @notify Pull ancestor token rewards from the dripper
-    */
-    function pullReward() public {
-        if (either(block.number == lastRewardBlock, protocolUnderwater())) return;
-        lastRewardBlock = block.number;
-        rewardDripper.dripReward();
-    }
-
     /*
     * @notify Create a new auction that sells ancestor tokens in exchange for system coins
     */
@@ -399,8 +364,6 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
         require(ancestor.transferFrom(msg.sender, address(this), wad), "ProtocolTokenLenderFirstResort/could-not-transfer-ancestor");
         descendant.mint(msg.sender, price);
 
-        pullReward();
-
         emit Join(msg.sender, price, wad);
     }
     /*
@@ -408,8 +371,8 @@ contract ProtocolTokenLenderFirstResort is ReentrancyGuard {
     */
     function requestExit() public {
         require(now > exitWindows[msg.sender].end, "ProtocolTokenLenderFirstResort/ongoing-request");
-        exitWindows[msg.sender].start = addition(now, exitDelay);
-        exitWindows[msg.sender].end   = addition(exitWindows[msg.sender].start, exitWindow);
+        exitWindows[msg.sender].start = now;
+        exitWindows[msg.sender].end   = addition(now, exitDelay);
         emit RequestExit(msg.sender, exitWindows[msg.sender].start, exitWindows[msg.sender].end);
     }
     /*
