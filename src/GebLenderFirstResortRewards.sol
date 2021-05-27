@@ -358,11 +358,10 @@ contract GebLenderFirstResortRewards is ReentrancyGuard {
     */
     function protocolUnderwater() public view returns (bool) {
         uint256 unqueuedUnauctionedDebt = accountingEngine.unqueuedUnauctionedDebt();
-        uint256 coinBalance             = safeEngine.coinBalance(address(accountingEngine));
 
         return both(
           accountingEngine.debtAuctionBidSize() <= unqueuedUnauctionedDebt,
-          unqueuedUnauctionedDebt >= addition(coinBalance, accountingEngine.debtAuctionBidSize())
+          safeEngine.coinBalance(address(accountingEngine)) < unqueuedUnauctionedDebt
         );
     }
 
