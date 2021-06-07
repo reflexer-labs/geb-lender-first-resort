@@ -129,6 +129,10 @@ contract Caller {
     function doExit() public {
         stakingPool.exit();
     }
+
+    function doGetRewards() public {
+        stakingPool.getRewards();
+    }
 }
 
 contract Fuzz is DSTest {
@@ -148,6 +152,7 @@ contract Fuzz is DSTest {
     uint minStakedTokensToKeep = 10 ether;
     uint tokensToAuction  = 10 ether;
     uint systemCoinsToRequest = 1000 ether;
+    uint startBlock = block.number;
 
     constructor() public {
         ancestor = new TokenMock();
@@ -175,7 +180,23 @@ contract Fuzz is DSTest {
             systemCoinsToRequest
         );
 
+        rewardToken.mint(address(rewardDripper), 5000 ether);
+
         rewardDripper.modifyParameters("requestor", address(stakingPool));
+    }
+
+    // --- Math ---
+    uint256 public constant WAD = 10 ** 18;
+    uint256 public constant RAY = 10 ** 27;
+
+    function addition(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x + y) >= x, "ProtocolTokenLenderFirstResort/add-overflow");
+    }
+    function subtract(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "ProtocolTokenLenderFirstResort/sub-underflow");
+    }
+    function multiply(uint x, uint y) internal pure returns (uint z) {
+        require(y == 0 || (z = x * y) / y == x, "ProtocolTokenLenderFirstResort/mul-overflow");
     }
 
     // for compatibility with dapp tools
@@ -200,32 +221,51 @@ contract Fuzz is DSTest {
     function doJoin(uint wad) public createCaller {
         uint price = stakingPool.joinPrice(wad);
         uint previousPoolBalance   = ancestor.balanceOf(address(stakingPool.ancestorPool()));
-        uint previousCallerBalance = rewardToken.balanceOf(address(callers[msg.sender]));
         callers[msg.sender].doJoin(wad);
-        // assert(ancestor.balanceOf(address(stakingPool.ancestorPool())) == previousPoolBalance + wad);
-        // assert(rewardToken.balanceOf(address(callers[msg.sender])) == previousCallerBalance + price);
+        assert(ancestor.balanceOf(address(stakingPool.ancestorPool())) == previousPoolBalance + wad);
+    }
+
+
+    function pendingRewards(address user)
+        internal
+        returns (uint256 pending)
+    {
+        stakingPool.updatePool();
+        pending = subtract(multiply(stakingPool.descendantBalanceOf(address(callers[msg.sender])), stakingPool.accTokensPerShare()) / RAY, stakingPool.rewardDebt(address(callers[msg.sender])));
     }
 
     function doRequestExit(uint wad) public createCaller {
         (, uint previouslyLocked) = stakingPool.exitRequests(address(callers[msg.sender]));
+
+        uint previousRewardsBalance = rewardToken.balanceOf(address(callers[msg.sender]));
+        uint rewardToReceive = pendingRewards(address(callers[msg.sender]));
         callers[msg.sender].doRequestExit(wad);
         // will only test the assertions if succeeded
         (uint deadline, uint locked) = stakingPool.exitRequests(address(callers[msg.sender]));
 
-        // assert(deadline == now + exitDelay);
-        // assert(locked == previouslyLocked + wad);
+        assert(deadline == now + exitDelay);
+        assert(locked == previouslyLocked + wad);
+        assert(rewardToken.balanceOf(address(callers[msg.sender])) == previousRewardsBalance + rewardToReceive);
+    }
+
+    function doGetRewards() public createCaller {
+
+        uint previousRewardsBalance = rewardToken.balanceOf(address(callers[msg.sender]));
+        uint rewardToReceive = pendingRewards(address(callers[msg.sender]));
+        callers[msg.sender].doGetRewards();
+        // will only test the assertions if succeeded
+        assert(rewardToken.balanceOf(address(callers[msg.sender])) == previousRewardsBalance + rewardToReceive);
     }
 
     function doExit() public createCaller {
         (, uint locked) = stakingPool.exitRequests(address(callers[msg.sender]));
         uint previousAncestorBalance = ancestor.balanceOf(address(callers[msg.sender]));
-        // uint previousDescendantBalance = descendant.balanceOf(address(callers[msg.sender]));
+
         uint price = stakingPool.exitPrice(locked);
 
         callers[msg.sender].doExit();
 
         assert(ancestor.balanceOf(address(callers[msg.sender])) == previousAncestorBalance + price);
-        // assert(descendant.balanceOf(address(callers[msg.sender])) == previousDescendantBalance - locked);
     }
 
     function doAuctionAncestorTokens() public {
@@ -240,7 +280,11 @@ contract Fuzz is DSTest {
 
     // invariants
     function echidna_ancestor_supply() public returns (bool) {
-        return totalCallerBalance(ancestor) == ancestor.totalSupply() - ancestor.balanceOf(address(stakingPool)) - ancestor.balanceOf(address(auctionHouse));
+        return totalCallerBalance(ancestor) == ancestor.totalSupply() - ancestor.balanceOf(address(stakingPool.ancestorPool())) - ancestor.balanceOf(address(auctionHouse));
+    }
+
+    function echidna_rewards_given() public returns (bool) {
+        return totalCallerBalance(rewardToken) <= (block.number - startBlock) * 1 ether;
     }
 
     function echidna_auction_funds() public returns (bool) {
@@ -250,8 +294,10 @@ contract Fuzz is DSTest {
 
     function test_echidna() public {
         Hevm hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
-        doJoin(3 ether);
-        doRequestExit(3 ether);
+        hevm.warp(now+1);
+        doJoin(1);
+        hevm.roll(block.number+1); // 1 ether
+        doRequestExit(1);
         hevm.warp(now + exitDelay + 1);
         doExit();
     }

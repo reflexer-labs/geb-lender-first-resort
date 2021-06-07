@@ -132,11 +132,11 @@ contract GebLenderFirstResortRewards is ReentrancyGuard {
     uint256   public stakedSupply;
 
     // Balances (not affected by slashing)
-    mapping(address => uint256)    public descendantBalanceOf;
+    mapping(address => uint256)     public descendantBalanceOf;
     // Exit data
     mapping(address => ExitRequest) public exitRequests;
     // The amount of tokens inneligible for claiming rewards (see formula below)
-    mapping(address => uint256)    internal rewardDebt;
+    mapping(address => uint256)     public rewardDebt;
     // Pending reward = (descendant.balanceOf(user) * accTokensPerShare) - rewardDebt[user]
 
     // The token being deposited in the pool

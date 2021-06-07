@@ -132,7 +132,7 @@ contract Caller {
     }
 }
 
-contract Fuzz {
+contract Fuzz is DSTest {
     TokenMock ancestor;
     TokenMock descendant;
     GebLenderFirstResort stakingPool;
@@ -170,7 +170,7 @@ contract Fuzz {
     }
 
     // for compatibility with dapp tools
-    function setUp() internal {}
+    function setUp() public {}
 
     // will fuzz unqueuedUnauctionedDebt and accountingEngines coin balance in safeEngine to simulate above/below water
     function fuzz_under_above_water(uint unqueuedUnauctionedDebt, uint accountingEngineBalance) public {
@@ -243,9 +243,10 @@ contract Fuzz {
             auctionHouse.activeStakedTokenAuctions() * stakingPool.tokensToAuction();
     }
 
-    // run with dapp test to ensure setup is ok, flip to public to test
-    function test_echidna() internal {
+    // run with dapp test to ensure setup is ok
+    function test_echidna() public {
         Hevm hevm = Hevm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
+        hevm.warp(now+1);
         doJoin(3 ether);
         doRequestExit(3 ether);
         hevm.warp(now + exitDelay);
