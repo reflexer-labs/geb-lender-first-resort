@@ -371,7 +371,6 @@ contract GebLenderFirstResort is ReentrancyGuard {
     */
     function requestExit(uint wad) public {
         require(wad > 0, "ProtocolTokenLenderFirstResort/null-amount-to-exit");
-        require(now > exitRequests[msg.sender].deadline, "ProtocolTokenLenderFirstResort/ongoing-request");
         exitRequests[msg.sender].deadline   = addition(now, exitDelay);
         exitRequests[msg.sender].lockedAmount  = addition(exitRequests[msg.sender].lockedAmount, wad);
 
