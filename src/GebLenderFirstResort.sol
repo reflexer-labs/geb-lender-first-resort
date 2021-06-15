@@ -200,6 +200,9 @@ contract GebLenderFirstResort is ReentrancyGuard {
     function wmultiply(uint x, uint y) internal pure returns (uint z) {
         z = multiply(x, y) / WAD;
     }
+    function minimum(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        return x <= y ? x : y;
+    }
 
     // --- Administration ---
     /*
@@ -372,7 +375,10 @@ contract GebLenderFirstResort is ReentrancyGuard {
     function requestExit(uint wad) public {
         require(wad > 0, "ProtocolTokenLenderFirstResort/null-amount-to-exit");
         exitRequests[msg.sender].deadline   = addition(now, exitDelay);
-        exitRequests[msg.sender].lockedAmount  = addition(exitRequests[msg.sender].lockedAmount, wad);
+        exitRequests[msg.sender].lockedAmount  = minimum(
+            addition(exitRequests[msg.sender].lockedAmount, wad),
+            descendant.balanceOf(msg.sender)
+        );
 
         emit RequestExit(msg.sender, exitRequests[msg.sender].deadline, wad);
     }
