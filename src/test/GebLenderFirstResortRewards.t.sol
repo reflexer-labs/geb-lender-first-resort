@@ -429,15 +429,6 @@ contract GebLenderFirstResortRewardsTest is DSTest {
         assertEq(wad, 1 ether);
     }
 
-    function testFail_request_exit_before_window_ends() public {
-        ancestor.approve(address(stakingPool), 1 ether);
-        stakingPool.join(1 ether);
-
-        stakingPool.requestExit(1 ether);
-        hevm.warp(now + exitDelay); // one sec to go
-        stakingPool.requestExit(1 ether);
-    }
-
     function test_exit() public {
         uint amount = 2 ether;
         // join
