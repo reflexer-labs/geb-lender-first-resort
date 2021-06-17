@@ -98,7 +98,8 @@ contract AutoRewardDripperTest is DSTest {
         dripper = new AutoRewardDripper(
             address(0),
             address(coin),
-            1 ether
+            rewardTimeline,
+            rewardCalculationDelay
         );
     }
 
@@ -106,15 +107,17 @@ contract AutoRewardDripperTest is DSTest {
         dripper = new AutoRewardDripper(
             address(requestor),
             address(0),
-            1 ether
+            rewardTimeline,
+            rewardCalculationDelay
         );
     }
 
-    function testFail_setup_null_reward() public {
+    function testFail_setup_null_timeline() public {
         dripper = new AutoRewardDripper(
             address(requestor),
             address(coin),
-            0
+            0,
+            rewardCalculationDelay
         );
     }
 
@@ -195,39 +198,91 @@ contract AutoRewardDripperTest is DSTest {
     }
 
     function test_drip_reward() public {
+        assertEq(coin.balanceOf(address(dripper)), initTokenAmount);
+
+        hevm.warp(now + 7 days);
         hevm.roll(block.number + 1);
         requestor.request(address(dripper));
-        assertEq(coin.balanceOf(address(requestor)), 1 ether);
+        assertEq(coin.balanceOf(address(requestor)), 0);
         assertEq(dripper.lastRewardBlock(), block.number);
-
-        /* // requsting again same block
-        requestor.request(address(dripper));
-        assertEq(coin.balanceOf(address(requestor)), 1 ether); // unchanged
-        assertEq(dripper.lastRewardBlock(), block.number);
-
-        hevm.roll(block.number + 1);
-        requestor.request(address(dripper));
-        assertEq(coin.balanceOf(address(requestor)), 2 ether);
-        assertEq(dripper.lastRewardBlock(), block.number);
+        assertEq(dripper.rewardPerBlock(), initTokenAmount / rewardTimeline);
+        assertEq(dripper.lastRewardCalculation(), now);
 
         // requsting again same block
         requestor.request(address(dripper));
-        assertEq(coin.balanceOf(address(requestor)), 2 ether); // unchanged
+        assertEq(coin.balanceOf(address(requestor)), 0); // unchanged
         assertEq(dripper.lastRewardBlock(), block.number);
+
+        hevm.roll(block.number + 1);
+        requestor.request(address(dripper));
+        assertEq(coin.balanceOf(address(requestor)), initTokenAmount / rewardTimeline);
+        assertEq(dripper.lastRewardBlock(), block.number);
+        assertEq(dripper.rewardPerBlock(), initTokenAmount / rewardTimeline);
+        assertEq(dripper.lastRewardCalculation(), now);
+
+        // requsting again same block
+        requestor.request(address(dripper));
+        assertEq(coin.balanceOf(address(requestor)), initTokenAmount / rewardTimeline); // unchanged
+        assertEq(dripper.lastRewardBlock(), block.number);
+        assertEq(dripper.rewardPerBlock(), initTokenAmount / rewardTimeline);
+        assertEq(dripper.lastRewardCalculation(), now);
 
         hevm.roll(block.number + 20);
         requestor.request(address(dripper));
-        assertEq(coin.balanceOf(address(requestor)), 22 ether);
+        assertEq(coin.balanceOf(address(requestor)), initTokenAmount / rewardTimeline * 21);
         assertEq(dripper.lastRewardBlock(), block.number);
+        assertEq(dripper.rewardPerBlock(), initTokenAmount / rewardTimeline);
+        assertEq(dripper.lastRewardCalculation(), now);
 
-        hevm.roll(block.number + 120);
+        // warp and request
+        uint256 balance = coin.balanceOf(address(dripper));
+
+        hevm.warp(now + rewardCalculationDelay);
+        hevm.roll(block.number + 1);
         requestor.request(address(dripper));
-        assertEq(coin.balanceOf(address(requestor)), initTokenAmount); // transferred what is left
+        assertEq(coin.balanceOf(address(requestor)), initTokenAmount / rewardTimeline * 22);
         assertEq(dripper.lastRewardBlock(), block.number);
+        assertEq(dripper.rewardPerBlock(), balance / rewardTimeline);
+        assertEq(dripper.lastRewardCalculation(), now);
+
+        requestor.request(address(dripper));
+        assertEq(coin.balanceOf(address(requestor)), initTokenAmount / rewardTimeline * 22); // unchanged
+        assertEq(dripper.lastRewardBlock(), block.number);
+        assertEq(dripper.rewardPerBlock(), balance / rewardTimeline);
+        assertEq(dripper.lastRewardCalculation(), now);
+
+        // give more coin, warp and request
+        coin.mint(address(dripper), initTokenAmount);
+        balance = coin.balanceOf(address(dripper));
+
+        hevm.warp(now + rewardCalculationDelay);
+        hevm.roll(block.number + 1);
+        requestor.request(address(dripper));
+        assertTrue(coin.balanceOf(address(requestor)) > initTokenAmount / rewardTimeline * 22);
+        assertEq(dripper.lastRewardBlock(), block.number);
+        assertEq(dripper.rewardPerBlock(), balance / rewardTimeline);
+        assertEq(dripper.lastRewardCalculation(), now);
+
+        requestor.request(address(dripper));
+        assertTrue(coin.balanceOf(address(requestor)) > initTokenAmount / rewardTimeline * 22);
+        assertEq(dripper.lastRewardBlock(), block.number);
+        assertEq(dripper.rewardPerBlock(), balance / rewardTimeline);
+        assertEq(dripper.lastRewardCalculation(), now);
+
+        // roll more than reward timeline
+        hevm.roll(block.number + dripper.rewardTimeline() + 50);
+        requestor.request(address(dripper));
+        assertEq(coin.balanceOf(address(requestor)), initTokenAmount * 2); // transferred everything
+        assertEq(dripper.lastRewardBlock(), block.number);
+        assertEq(dripper.rewardPerBlock(), balance / rewardTimeline);
+        assertEq(dripper.lastRewardCalculation(), now);
 
         hevm.roll(block.number + 120);
         requestor.request(address(dripper)); // does not revert without balance
-        assertEq(dripper.lastRewardBlock(), block.number); */
+        assertEq(dripper.lastRewardBlock(), block.number);
+        assertEq(coin.balanceOf(address(requestor)), initTokenAmount * 2); // transferred everything
+        assertEq(dripper.rewardPerBlock(), balance / rewardTimeline);
+        assertEq(dripper.lastRewardCalculation(), now);
     }
 
     function testFail_drip_unauthorized() public {

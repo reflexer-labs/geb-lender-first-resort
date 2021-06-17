@@ -1,4 +1,4 @@
-/// RewardDripper.sol
+/// AutoRewardDripper.sol
 
 // Copyright (C) 2021 Reflexer Labs, INC
 //
@@ -22,7 +22,7 @@ abstract contract TokenLike {
     function transfer(address, uint256) virtual external returns (bool);
 }
 
-contract RewardDripper {
+contract AutoRewardDripper {
     // --- Auth ---
     mapping (address => uint) public authorizedAccounts;
     /**
@@ -45,7 +45,7 @@ contract RewardDripper {
     * @notice Checks whether msg.sender can call an authed function
     **/
     modifier isAuthorized {
-        require(authorizedAccounts[msg.sender] == 1, "RewardDripper/account-not-authorized");
+        require(authorizedAccounts[msg.sender] == 1, "AutoRewardDripper/account-not-authorized");
         _;
     }
 
@@ -82,11 +82,11 @@ contract RewardDripper {
       uint256 rewardTimeline_,
       uint256 rewardCalculationDelay_
     ) public {
-        require(requestor_ != address(0), "RewardDripper/null-requoestor");
-        require(rewardToken_ != address(0), "RewardDripper/null-reward-token");
-        require(rewardTimeline_ > 0, "RewardDripper/null-reward-time");
-        require(rewardTimeline_ <= MAX_REWARD_TIMELINE, "RewardDripper/high-reward-timeline");
-        require(rewardCalculationDelay_ > 0, "RewardDripper/null-reward-calc-delay");
+        require(requestor_ != address(0), "AutoRewardDripper/null-requoestor");
+        require(rewardToken_ != address(0), "AutoRewardDripper/null-reward-token");
+        require(rewardTimeline_ > 0, "AutoRewardDripper/null-reward-time");
+        require(rewardTimeline_ <= MAX_REWARD_TIMELINE, "AutoRewardDripper/high-reward-timeline");
+        require(rewardCalculationDelay_ > 0, "AutoRewardDripper/null-reward-calc-delay");
 
         authorizedAccounts[msg.sender] = 1;
 
@@ -110,10 +110,10 @@ contract RewardDripper {
 
     // --- Math ---
     function subtract(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x - y) <= x, "RewardDripper/sub-underflow");
+        require((z = x - y) <= x, "AutoRewardDripper/sub-underflow");
     }
     function multiply(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || (z = x * y) / y == x, "RewardDripper/mul-overflow");
+        require(y == 0 || (z = x * y) / y == x, "AutoRewardDripper/mul-overflow");
     }
 
     // --- Administration ---
@@ -124,19 +124,19 @@ contract RewardDripper {
     */
     function modifyParameters(bytes32 parameter, uint256 data) external isAuthorized {
         if (parameter == "lastRewardBlock") {
-            require(data >= block.number, "RewardDripper/invalid-last-reward-block");
+            require(data >= block.number, "AutoRewardDripper/invalid-last-reward-block");
             lastRewardBlock = data;
         } else if (parameter == "rewardPerBlock") {
-            require(data > 0, "RewardDripper/invalid-reward-per-block");
+            require(data > 0, "AutoRewardDripper/invalid-reward-per-block");
             rewardPerBlock = data;
         } else if (parameter == "rewardCalculationDelay") {
-            require(data > 0, "RewardDripper/invalid-reward-calculation-delay");
+            require(data > 0, "AutoRewardDripper/invalid-reward-calculation-delay");
             rewardCalculationDelay = data;
         } else if (parameter == "rewardTimeline") {
-            require(data > 0 && data <= MAX_REWARD_TIMELINE, "RewardDripper/invalid-reward-timeline");
+            require(data > 0 && data <= MAX_REWARD_TIMELINE, "AutoRewardDripper/invalid-reward-timeline");
             rewardTimeline = data;
         }
-        else revert("RewardDripper/modify-unrecognized-param");
+        else revert("AutoRewardDripper/modify-unrecognized-param");
         emit ModifyParameters(parameter, data);
     }
     /*
@@ -145,11 +145,11 @@ contract RewardDripper {
     * @param data New value for the parameter
     */
     function modifyParameters(bytes32 parameter, address data) external isAuthorized {
-        require(data != address(0), "RewardDripper/null-data");
+        require(data != address(0), "AutoRewardDripper/null-data");
         if (parameter == "requestor") {
             requestor = data;
         }
-        else revert("RewardDripper/modify-unrecognized-param");
+        else revert("AutoRewardDripper/modify-unrecognized-param");
         emit ModifyParameters(parameter, data);
     }
 
@@ -160,8 +160,8 @@ contract RewardDripper {
     * @param amount The amount of tokens transferred
     */
     function transferTokenOut(address dst, uint256 amount) external isAuthorized {
-        require(dst != address(0), "RewardDripper/null-dst");
-        require(amount > 0, "RewardDripper/null-amount");
+        require(dst != address(0), "AutoRewardDripper/null-dst");
+        require(amount > 0, "AutoRewardDripper/null-amount");
 
         rewardToken.transfer(dst, amount);
 
@@ -180,7 +180,7 @@ contract RewardDripper {
         uint256 remainingBalance = rewardToken.balanceOf(address(this));
         if (either(remainingBalance == 0, subtract(now, lastRewardCalculation) < rewardCalculationDelay)) return;
         lastRewardCalculation    = now;
-        rewardPerBlock           = remainingBalance / rewardTimeline;
+        rewardPerBlock           = (rewardTimeline >= remainingBalance) ? remainingBalance : remainingBalance / rewardTimeline;
         emit RecomputePerBlockReward(rewardPerBlock);
     }
     /*
@@ -188,7 +188,7 @@ contract RewardDripper {
     */
     function dripReward(address to) public {
         if (lastRewardBlock >= block.number) return;
-        require(msg.sender == requestor, "RewardDripper/invalid-caller");
+        require(msg.sender == requestor, "AutoRewardDripper/invalid-caller");
 
         uint256 remainingBalance = rewardToken.balanceOf(address(this));
         uint256 amountToTransfer = multiply(subtract(block.number, lastRewardBlock), rewardPerBlock);
