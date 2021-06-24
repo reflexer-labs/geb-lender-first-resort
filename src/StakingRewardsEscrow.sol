@@ -24,7 +24,7 @@ abstract contract TokenLike {
     function transfer(address, uint256) virtual external returns (bool);
 }
 
-contract StakingRewardsEscrow {
+contract StakingRewardsEscrow is ReentrancyGuard {
     // --- Auth ---
     mapping (address => uint) public authorizedAccounts;
     /**
@@ -70,7 +70,9 @@ contract StakingRewardsEscrow {
     // The token to escrow
     TokenLike public token;
 
-    uint256   public constant MAX_ESCROW_DURATION = 180 days;
+    uint256   public constant MAX_ESCROW_DURATION          = 180 days;
+    uint256   public constant MAX_DURATION_TO_START_ESCROW = 30 days;
+    uint256   public constant MAX_SLOTS_TO_CLAIM           = 15;
 
     // Next slot to fill for every user
     mapping (address => uint256)                        public currentEscrowSlot;
@@ -83,6 +85,7 @@ contract StakingRewardsEscrow {
     event ModifyParameters(bytes32 indexed parameter, uint256 data);
     event ModifyParameters(bytes32 indexed parameter, address data);
     event EscrowRewards(address indexed who, uint256 amount, uint256 currentEscrowSlot);
+    event ClaimRewards(address indexed who, uint256 amount);
 
     constructor(
       address escrowRequestor_,
@@ -94,6 +97,7 @@ contract StakingRewardsEscrow {
       require(token_ != address(0), "StakingRewardsEscrow/null-token");
       require(both(escrowDuration_ > 0, escrowDuration_ <= MAX_ESCROW_DURATION), "StakingRewardsEscrow/invalid-escrow-duration");
       require(both(durationToStartEscrow_ > 0, durationToStartEscrow_ < escrowDuration_), "StakingRewardsEscrow/invalid-duration-start-escrow");
+      requirE(escrowDuration_ > durationToStartEscrow_, "StakingRewardsEscrow/");
 
       authorizedAccounts[msg.sender] = 1;
 
@@ -128,7 +132,18 @@ contract StakingRewardsEscrow {
     * @param data New value for the parameter
     */
     function modifyParameters(bytes32 parameter, uint256 data) external isAuthorized {
-
+        if (parameter == "escrowDuration") {
+          require(both(data > 0, data <= MAX_ESCROW_DURATION), "StakingRewardsEscrow/invalid-escrow-duration");
+          require(data > durationToStartEscrow, "StakingRewardsEscrow/smaller-than-start-escrow-duration");
+          escrowDuration = data;
+        }
+        else if (parameter == "durationToStartEscrow") {
+          require(both(data > 1, data <= MAX_DURATION_TO_START_ESCROW), "StakingRewardsEscrow/duration-to-start-escrow");
+          require(data < escrowDuration, "StakingRewardsEscrow/not-lower-than-escrow-duration");
+          durationToStartEscrow = data;
+        }
+        else revert("StakingRewardsEscrow/modify-unrecognized-param");
+        emit ModifyParameters(parameter, data);
     }
     /*
     * @notify Modify an address parameter
@@ -138,7 +153,11 @@ contract StakingRewardsEscrow {
     function modifyParameters(bytes32 parameter, address data) external isAuthorized {
         require(data != address(0), "StakingRewardsEscrow/null-data");
 
-
+        if (parameter == "escrowRequestor") {
+            escrowDuration = data;
+        }
+        else revert("StakingRewardsEscrow/modify-unrecognized-param");
+        emit ModifyParameters(parameter, data);
     }
 
     // --- Core Logic ---
@@ -147,7 +166,7 @@ contract StakingRewardsEscrow {
     * @param who The address that will get escrowed tokens
     * @param amount Amount of tokens to escrow
     */
-    function escrowRewards(address who, uint256 amount) external {
+    function escrowRewards(address who, uint256 amount) external nonReentrant {
         require(escrowRequestor == msg.sender, "StakingRewardsEscrow/not-requestor");
         require(who != address(0), "StakingRewardsEscrow/null-who");
         require(amount > 0, "StakingRewardsEscrow/null-amount");
@@ -172,7 +191,43 @@ contract StakingRewardsEscrow {
     * @param startRange The slot index from which to start claiming
     * @param endRange The slot index to end claiming at
     */
-    function claimTokens(address who, uint256 startRange, uint256 endRange) public {
+    function claimTokens(address who, uint256 startRange, uint256 endRange) public nonReentrant {
+        require(currentEscrowSlot[who] > 0, "StakingRewardsEscrow/invalid-address");
+        require(startRange <= endRange, "StakingRewardsEscrow/invalid-range");
+        require(endRange < currentEscrowSlot[who], "StakingRewardsEscrow/invalid-end");
+        require(subtract(endRange, startRange) <= MAX_SLOTS_TO_CLAIM, "StakingRewardsEscrow/exceeds-max-slots");
 
+        EscrowSlot memory escrowReward;
+
+        uint256 totalToTransfer;
+        uint256 endDate;
+        uint256 reward;
+
+        for (uint i = startRange; i < endRange; i++) {
+            escrowReward = escrows[who][i];
+            endDate      = addition(escrowReward.startDate, escrowReward.duration);
+
+            if (escrowReward.amountClaimed >= escrowReward.total) continue;
+            if (both(escrowReward.claimedUntil < endDate, now >= endDate)) {
+              totalToTransfer            = addition(totalToTransfer, subtract(escrowReward.total, escrowReward.amountClaimed));
+              escrowReward.amountClaimed = escrowReward.total;
+              escrowReward.claimedUntil  = now;
+              continue;
+            }
+
+            reward = subtract(escrowReward.total, escrowReward.amountClaimed) / subtract(endDate, escrowReward.claimedUntil);
+            reward = multiply(rewardPerSecond, subtract(now, escrowReward.claimedUntil));
+            require(addition(escrowReward.amountClaimed, reward) <= escrowReward.total, "StakingRewardsEscrow/reward-more-than-total");
+
+            totalToTransfer            = addition(totalToTransfer, reward);
+            escrowReward.amountClaimed = addition(escrowReward.amountClaimed, reward);
+            escrowReward.claimedUntil  = now;
+        }
+
+        if (totalToTransfer > 0) {
+            require(token.transfer(who, totalToTransfer), "StakingRewardsEscrow/cannot-transfer-rewards");
+        }
+
+        emit ClaimRewards(who, totalToTransfer, startRange, endRange);
     }
 }
