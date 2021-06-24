@@ -85,7 +85,7 @@ contract StakingRewardsEscrow is ReentrancyGuard {
     event ModifyParameters(bytes32 indexed parameter, uint256 data);
     event ModifyParameters(bytes32 indexed parameter, address data);
     event EscrowRewards(address indexed who, uint256 amount, uint256 currentEscrowSlot);
-    event ClaimRewards(address indexed who, uint256 amount);
+    event ClaimRewards(address indexed who, uint256 amount, uint256 startRange, uint256 endRange);
 
     constructor(
       address escrowRequestor_,
@@ -97,7 +97,7 @@ contract StakingRewardsEscrow is ReentrancyGuard {
       require(token_ != address(0), "StakingRewardsEscrow/null-token");
       require(both(escrowDuration_ > 0, escrowDuration_ <= MAX_ESCROW_DURATION), "StakingRewardsEscrow/invalid-escrow-duration");
       require(both(durationToStartEscrow_ > 0, durationToStartEscrow_ < escrowDuration_), "StakingRewardsEscrow/invalid-duration-start-escrow");
-      requirE(escrowDuration_ > durationToStartEscrow_, "StakingRewardsEscrow/");
+      require(escrowDuration_ > durationToStartEscrow_, "StakingRewardsEscrow/");
 
       authorizedAccounts[msg.sender] = 1;
 
@@ -123,6 +123,9 @@ contract StakingRewardsEscrow is ReentrancyGuard {
     }
     function subtract(uint256 x, uint256 y) internal pure returns (uint256 z) {
         require((z = x - y) <= x, "StakingRewardsEscrow/sub-underflow");
+    }
+    function multiply(uint x, uint y) internal pure returns (uint z) {
+        require(y == 0 || (z = x * y) / y == x, "StakingRewardsEscrow/mul-overflow");
     }
 
     // --- Administration ---
@@ -154,7 +157,7 @@ contract StakingRewardsEscrow is ReentrancyGuard {
         require(data != address(0), "StakingRewardsEscrow/null-data");
 
         if (parameter == "escrowRequestor") {
-            escrowDuration = data;
+            escrowRequestor = data;
         }
         else revert("StakingRewardsEscrow/modify-unrecognized-param");
         emit ModifyParameters(parameter, data);
@@ -216,7 +219,7 @@ contract StakingRewardsEscrow is ReentrancyGuard {
             }
 
             reward = subtract(escrowReward.total, escrowReward.amountClaimed) / subtract(endDate, escrowReward.claimedUntil);
-            reward = multiply(rewardPerSecond, subtract(now, escrowReward.claimedUntil));
+            reward = multiply(reward, subtract(now, escrowReward.claimedUntil));
             require(addition(escrowReward.amountClaimed, reward) <= escrowReward.total, "StakingRewardsEscrow/reward-more-than-total");
 
             totalToTransfer            = addition(totalToTransfer, reward);
