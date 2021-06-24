@@ -82,6 +82,7 @@ contract StakingRewardsEscrow {
     event RemoveAuthorization(address account);
     event ModifyParameters(bytes32 indexed parameter, uint256 data);
     event ModifyParameters(bytes32 indexed parameter, address data);
+    event EscrowRewards(address indexed who, uint256 amount, uint256 currentEscrowSlot);
 
     constructor(
       address escrowRequestor_,
@@ -97,11 +98,27 @@ contract StakingRewardsEscrow {
       authorizedAccounts[msg.sender] = 1;
 
       escrowRequestor        = escrowRequestor_;
-      token                  = token_;
+      token                  = TokenLike(token_);
       escrowDuration         = escrowDuration_;
       durationToStartEscrow  = durationToStartEscrow_;
 
       emit AddAuthorization(msg.sender);
+    }
+
+    // --- Boolean Logic ---
+    function both(bool x, bool y) internal pure returns (bool z) {
+        assembly{ z := and(x, y)}
+    }
+    function either(bool x, bool y) internal pure returns (bool z) {
+        assembly{ z := or(x, y)}
+    }
+
+    // --- Math ---
+    function addition(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x + y) >= x, "StakingRewardsEscrow/add-overflow");
+    }
+    function subtract(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        require((z = x - y) <= x, "StakingRewardsEscrow/sub-underflow");
     }
 
     // --- Administration ---
@@ -135,14 +152,16 @@ contract StakingRewardsEscrow {
         require(who != address(0), "StakingRewardsEscrow/null-who");
         require(amount > 0, "StakingRewardsEscrow/null-amount");
 
+        EscrowSlot memory escrowReward = escrows[msg.sender][currentEscrowSlot[msg.sender]];
+
         if (
           either(currentEscrowSlot[msg.sender] == 0,
-          now > addition(escrows[currentEscrowSlot[msg.sender]].startDate, durationToStartEscrow))
+          now > addition(escrowReward.startDate, durationToStartEscrow))
         ) {
           currentEscrowSlot[msg.sender] = addition(currentEscrowSlot[msg.sender], 1);
-          escrows[currentEscrowSlot[msg.sender]] = EscrowSlot(amount, now, escrowDuration, 0, 0);
+          escrowReward = EscrowSlot(amount, now, escrowDuration, 0, 0);
         } else {
-          escrows[currentEscrowSlot[msg.sender]].total = addition(escrows[currentEscrowSlot[msg.sender]].total, amount);
+          escrowReward.total = addition(escrowReward.total, amount);
         }
 
         emit EscrowRewards(who, amount, currentEscrowSlot[msg.sender]);
@@ -154,6 +173,6 @@ contract StakingRewardsEscrow {
     * @param endRange The slot index to end claiming at
     */
     function claimTokens(address who, uint256 startRange, uint256 endRange) public {
-        
+
     }
 }

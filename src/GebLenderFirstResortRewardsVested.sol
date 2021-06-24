@@ -1,4 +1,4 @@
-/// GebLenderFirstResortRewardsVested.sol
+/// GebLenderFirstResortRewardsVestedVested.sol
 
 // Copyright (C) 2021 Reflexer Labs, INC
 //
@@ -51,7 +51,7 @@ abstract contract StakingRewardsEscrowLike {
     function escrowRewards(address, uint256) virtual external;
 }
 
-// Stores tokens, owned by GebLenderFirstResortRewards
+// Stores tokens, owned by GebLenderFirstResortRewardsVested
 contract TokenPool {
     TokenLike public token;
     address   public owner;
@@ -73,7 +73,7 @@ contract TokenPool {
     }
 }
 
-contract GebLenderFirstResortRewards is ReentrancyGuard {
+contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
     // --- Auth ---
     mapping (address => uint) public authorizedAccounts;
     /**
@@ -434,7 +434,6 @@ contract GebLenderFirstResortRewards is ReentrancyGuard {
                 rewardPool.transfer(address(escrow), vested);
                 emit EscrowRewards(address(escrow), msg.sender, vested);
               } catch(bytes memory revertReason) {
-                vested = 0;
                 emit FailEscrowRewards(revertReason);
               }
             }
