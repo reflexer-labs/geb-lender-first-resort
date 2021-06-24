@@ -939,6 +939,32 @@ contract GebLenderFirstResortRewardsVestedTest is DSTest {
         accountingEngine.modifyParameters("debtAuctionBidSize", 1000 ether + 1);
         assertTrue(!stakingPool.protocolUnderwater());
     }
+
+    function test_escrow_rewards_twice() public {
+        stakingPool.modifyParameters("escrowPaused", 0);
+
+        uint amount = 10 ether;
+
+        hevm.roll(block.number + 10);
+
+        stakingPool.updatePool(); // no effect
+
+        // join
+        ancestor.approve(address(stakingPool), uint(-1));
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 10); // 10 blocks
+
+        stakingPool.getRewards();
+        assertEq(rewardToken.balanceOf(address(this)), 8 ether);
+        assertEq(rewardToken.balanceOf(address(escrow)), 12 ether);
+
+        hevm.roll(block.number + 8); // 8 blocks
+
+        stakingPool.getRewards();
+        assertTrue(rewardToken.balanceOf(address(this)) >= 11.2 ether - 1);
+        assertTrue(rewardToken.balanceOf(address(escrow)) >= 16.8 ether - 1);
+    }
 }
 
 contract GebLenderFirstResortRewardsVestedSameTokenTest is DSTest {
@@ -1376,5 +1402,28 @@ contract GebLenderFirstResortRewardsVestedSameTokenTest is DSTest {
         accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether);
         accountingEngine.modifyParameters("debtAuctionBidSize", 1000 ether + 1);
         assertTrue(!stakingPool.protocolUnderwater());
+    }
+
+    function test_escrow_rewards_twice() public {
+        stakingPool.modifyParameters("escrowPaused", 0);
+
+        uint amount = 23 ether;
+
+        ancestor.approve(address(stakingPool), amount);
+        stakingPool.join(amount);
+
+        hevm.roll(block.number + 32); // 32 blocks
+        uint previousBalance = ancestor.balanceOf(address(this));
+
+        stakingPool.getRewards();
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + 12.8 ether - 1); // 40% of the amount
+        assertTrue(ancestor.balanceOf(address(escrow)) >= 18.2 ether - 1); // 60% of the amount
+
+        rewardDripper.modifyParameters("rewardPerBlock", 0.5 ether);
+        hevm.roll(block.number + 32); // 32 blocks
+
+        stakingPool.getRewards();
+        assertTrue(ancestor.balanceOf(address(this)) >= previousBalance + 19 ether - 1);
+        assertTrue(ancestor.balanceOf(address(escrow)) >= 28 ether - 1);
     }
 }
