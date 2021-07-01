@@ -84,12 +84,17 @@ contract Caller {
     function doExit() public {
         stakingPool.exit();
     }
+
+    function doApprove(DSToken token, address guy) public {
+        token.approve(guy);
+    }
 }
 
 contract GebLenderFirstResortRewardsTest is DSTest {
     Hevm hevm;
     DSToken rewardToken;
     DSToken ancestor;
+    DSToken descendant;
     GebLenderFirstResortRewards stakingPool;
     AuctionHouseMock auctionHouse;
     AccountingEngineMock accountingEngine;
@@ -111,6 +116,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
 
         rewardToken = new DSToken("PROT", "PROT");
         ancestor = new DSToken("LP", "LP");
+        descendant = new DSToken("LP_DERIVE", "LP_DERIVE");
         auctionHouse = new AuctionHouseMock(address(ancestor));
         accountingEngine = new AccountingEngineMock();
         safeEngine = new SAFEEngineMock();
@@ -122,6 +128,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
 
         stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
+            address(descendant),
             address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
@@ -138,11 +145,16 @@ contract GebLenderFirstResortRewardsTest is DSTest {
         rewardToken.mint(address(rewardDripper), 10000000 ether);
 
         ancestor.mint(address(this), 1000000000 ether);
+        descendant.setOwner(address(stakingPool));
+
+        descendant.approve(address(stakingPool));
+
         unauth = new Caller(stakingPool);
     }
 
     function test_setup() public {
         assertEq(address(stakingPool.ancestorPool().token()), address(ancestor));
+        assertEq(address(stakingPool.descendant()), address(descendant));
         assertEq(address(stakingPool.auctionHouse()), address(auctionHouse));
         assertEq(address(stakingPool.rewardDripper()), address(rewardDripper));
         assertEq(address(stakingPool.rewardPool().token()), address(rewardToken));
@@ -160,6 +172,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
     function testFail_setup_invalid_maxDelay() public {
         stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
+            address(descendant),
             address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
@@ -176,6 +189,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
     function testFail_setup_invalid_minStakedTokensToKeep() public {
         stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
+            address(descendant),
             address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
@@ -192,6 +206,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
     function testFail_setup_invalid_tokensToAuction() public {
         stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
+            address(descendant),
             address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
@@ -208,6 +223,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
     function testFail_setup_invalid_systemCoinsToRequest() public {
         stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
+            address(descendant),
             address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
@@ -224,6 +240,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
     function testFail_setup_invalid_auctionHouse() public {
         stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
+            address(descendant),
             address(rewardToken),
             address(0),
             address(accountingEngine),
@@ -240,6 +257,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
     function testFail_setup_invalid_accountingEngine() public {
         stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
+            address(descendant),
             address(rewardToken),
             address(auctionHouse),
             address(0),
@@ -256,6 +274,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
     function testFail_setup_invalid_safeEngine() public {
         stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
+            address(descendant),
             address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
@@ -272,6 +291,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
     function testFail_setup_invalid_rewardsDripper() public {
         stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
+            address(descendant),
             address(rewardToken),
             address(auctionHouse),
             address(accountingEngine),
@@ -421,6 +441,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
     function test_request_exit() public {
         ancestor.approve(address(stakingPool), 1 ether);
         stakingPool.join(1 ether);
+        assertEq(descendant.balanceOf(address(this)), 1 ether);
 
         stakingPool.requestExit(1 ether);
         (uint deadline, uint wad) = stakingPool.exitRequests(address(this));
@@ -602,6 +623,10 @@ contract GebLenderFirstResortRewardsTest is DSTest {
 
         // request exit
         hevm.roll(block.number + 32); // 32 blocks
+
+        user1.doApprove(descendant, address(stakingPool));
+        user2.doApprove(descendant, address(stakingPool));
+
         user1.doRequestExit(amount);
         user2.doRequestExit(amount);
 
@@ -697,6 +722,9 @@ contract GebLenderFirstResortRewardsTest is DSTest {
         assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
 
         // exiting (after slash)
+        user1.doApprove(descendant, address(stakingPool));
+        user2.doApprove(descendant, address(stakingPool));
+
         user1.doRequestExit(amount);
         user2.doRequestExit(amount);
         hevm.warp(now + exitDelay);
@@ -795,6 +823,10 @@ contract GebLenderFirstResortRewardsTest is DSTest {
         user2.doJoin(amount);
 
         hevm.roll(block.number + 12); // 12 blocks
+
+        // approve burning
+        user1.doApprove(descendant, address(stakingPool));
+        user2.doApprove(descendant, address(stakingPool));
 
         // users 3 joins, with double amount
         user3.doJoin(amount * 2);
@@ -917,6 +949,7 @@ contract GebLenderFirstResortRewardsTest is DSTest {
 contract GebLenderFirstResortRewardsSameTokenTest is DSTest {
     Hevm hevm;
     DSToken ancestor;
+    DSToken descendant;
     GebLenderFirstResortRewards stakingPool;
     AuctionHouseMock auctionHouse;
     AccountingEngineMock accountingEngine;
@@ -937,6 +970,7 @@ contract GebLenderFirstResortRewardsSameTokenTest is DSTest {
         hevm.warp(100000001);
 
         ancestor = new DSToken("PROT", "PROT");
+        descendant = new DSToken("PROT_DERIVE", "PROT_DERIVE");
         auctionHouse = new AuctionHouseMock(address(ancestor));
         accountingEngine = new AccountingEngineMock();
         safeEngine = new SAFEEngineMock();
@@ -948,6 +982,7 @@ contract GebLenderFirstResortRewardsSameTokenTest is DSTest {
 
         stakingPool = new GebLenderFirstResortRewards(
             address(ancestor),
+            address(descendant),
             address(ancestor),
             address(auctionHouse),
             address(accountingEngine),
@@ -964,6 +999,9 @@ contract GebLenderFirstResortRewardsSameTokenTest is DSTest {
         ancestor.mint(address(rewardDripper), 10000000 ether);
 
         ancestor.mint(address(this), 1000000000 ether);
+        descendant.setOwner(address(stakingPool));
+        descendant.approve(address(stakingPool));
+
         unauth = new Caller(stakingPool);
     }
 
@@ -1078,6 +1116,10 @@ contract GebLenderFirstResortRewardsSameTokenTest is DSTest {
         hevm.roll(block.number + 32); // 32 blocks
         uint previousBalance1 = ancestor.balanceOf(address(user1));
         uint previousBalance2 = ancestor.balanceOf(address(user2));
+
+        user1.doApprove(descendant, address(stakingPool));
+        user2.doApprove(descendant, address(stakingPool));
+
         user1.doRequestExit(amount);
         user2.doRequestExit(amount);
 
@@ -1173,6 +1215,9 @@ contract GebLenderFirstResortRewardsSameTokenTest is DSTest {
         assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
 
         // exiting (after slash)
+        user1.doApprove(descendant, address(stakingPool));
+        user2.doApprove(descendant, address(stakingPool));
+
         user1.doRequestExit(amount);
         user2.doRequestExit(amount);
         hevm.warp(now + exitDelay);

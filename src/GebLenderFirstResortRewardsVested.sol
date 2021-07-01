@@ -96,7 +96,7 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
     * @notice Checks whether msg.sender can call an authed function
     **/
     modifier isAuthorized {
-        require(authorizedAccounts[msg.sender] == 1, "ProtocolTokenLenderFirstResort/account-not-authorized");
+        require(authorizedAccounts[msg.sender] == 1, "GebLenderFirstResortRewardsVested/account-not-authorized");
         _;
     }
 
@@ -150,6 +150,8 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
     TokenPool                public ancestorPool;
     // The token used to pay rewards
     TokenPool                public rewardPool;
+    // Descendant token
+    TokenLike                public descendant;
     // Auction house for staked tokens
     AuctionHouseLike         public auctionHouse;
     // Accounting engine contract
@@ -183,6 +185,7 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
 
     constructor(
       address ancestor_,
+      address descendant_,
       address rewardToken_,
       address auctionHouse_,
       address accountingEngine_,
@@ -196,17 +199,18 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
       uint256 systemCoinsToRequest_,
       uint256 percentageVested_
     ) public {
-        require(maxDelay_ > 0, "ProtocolTokenLenderFirstResort/null-max-delay");
-        require(exitDelay_ <= maxDelay_, "ProtocolTokenLenderFirstResort/invalid-exit-delay");
-        require(minStakedTokensToKeep_ > 0, "ProtocolTokenLenderFirstResort/null-min-staked-tokens");
-        require(tokensToAuction_ > 0, "ProtocolTokenLenderFirstResort/null-tokens-to-auction");
-        require(systemCoinsToRequest_ > 0, "ProtocolTokenLenderFirstResort/null-sys-coins-to-request");
-        require(auctionHouse_ != address(0), "ProtocolTokenLenderFirstResort/null-auction-house");
-        require(accountingEngine_ != address(0), "ProtocolTokenLenderFirstResort/null-accounting-engine");
-        require(safeEngine_ != address(0), "ProtocolTokenLenderFirstResort/null-safe-engine");
-        require(rewardDripper_ != address(0), "ProtocolTokenLenderFirstResort/null-reward-dripper");
-        require(escrow_ != address(0), "ProtocolTokenLenderFirstResort/null-escrow");
-        require(percentageVested_ < 100, "ProtocolTokenLenderFirstResort/invalid-percentage-vested");
+        require(maxDelay_ > 0, "GebLenderFirstResortRewardsVested/null-max-delay");
+        require(exitDelay_ <= maxDelay_, "GebLenderFirstResortRewardsVested/invalid-exit-delay");
+        require(minStakedTokensToKeep_ > 0, "GebLenderFirstResortRewardsVested/null-min-staked-tokens");
+        require(tokensToAuction_ > 0, "GebLenderFirstResortRewardsVested/null-tokens-to-auction");
+        require(systemCoinsToRequest_ > 0, "GebLenderFirstResortRewardsVested/null-sys-coins-to-request");
+        require(auctionHouse_ != address(0), "GebLenderFirstResortRewardsVested/null-auction-house");
+        require(accountingEngine_ != address(0), "GebLenderFirstResortRewardsVested/null-accounting-engine");
+        require(safeEngine_ != address(0), "GebLenderFirstResortRewardsVested/null-safe-engine");
+        require(rewardDripper_ != address(0), "GebLenderFirstResortRewardsVested/null-reward-dripper");
+        require(escrow_ != address(0), "GebLenderFirstResortRewardsVested/null-escrow");
+        require(percentageVested_ < 100, "GebLenderFirstResortRewardsVested/invalid-percentage-vested");
+        require(descendant_ != address(0), "GebLenderFirstResortRewardsVested/null-descendant");
 
         authorizedAccounts[msg.sender] = 1;
         canJoin                        = true;
@@ -226,11 +230,15 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
         safeEngine                     = SAFEEngineLike(safeEngine_);
         rewardDripper                  = RewardDripperLike(rewardDripper_);
         escrow                         = StakingRewardsEscrowLike(escrow_);
+        descendant                     = TokenLike(descendant_);
 
         ancestorPool                   = new TokenPool(ancestor_);
         rewardPool                     = new TokenPool(rewardToken_);
 
         lastRewardBlock                = block.number;
+
+        require(ancestorPool.token().decimals() == 18, "GebLenderFirstResortRewardsVested/ancestor-decimal-mismatch");
+        require(descendant.decimals() == 18, "GebLenderFirstResortRewardsVested/descendant-decimal-mismatch");
 
         emit AddAuthorization(msg.sender);
     }
@@ -248,16 +256,16 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
     uint256 public constant RAY = 10 ** 27;
 
     function addition(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x + y) >= x, "ProtocolTokenLenderFirstResort/add-overflow");
+        require((z = x + y) >= x, "GebLenderFirstResortRewardsVested/add-overflow");
     }
     function subtract(uint256 x, uint256 y) internal pure returns (uint256 z) {
-        require((z = x - y) <= x, "ProtocolTokenLenderFirstResort/sub-underflow");
+        require((z = x - y) <= x, "GebLenderFirstResortRewardsVested/sub-underflow");
     }
     function multiply(uint x, uint y) internal pure returns (uint z) {
-        require(y == 0 || (z = x * y) / y == x, "ProtocolTokenLenderFirstResort/mul-overflow");
+        require(y == 0 || (z = x * y) / y == x, "GebLenderFirstResortRewardsVested/mul-overflow");
     }
     function wdivide(uint x, uint y) internal pure returns (uint z) {
-        require(y > 0, "ProtocolTokenLenderFirstResort/wdiv-by-zero");
+        require(y > 0, "GebLenderFirstResortRewardsVested/wdiv-by-zero");
         z = multiply(x, WAD) / y;
     }
     function wmultiply(uint x, uint y) internal pure returns (uint z) {
@@ -293,34 +301,34 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
     */
     function modifyParameters(bytes32 parameter, uint256 data) external isAuthorized {
         if (parameter == "exitDelay") {
-          require(data <= MAX_DELAY, "ProtocolTokenLenderFirstResort/invalid-exit-delay");
+          require(data <= MAX_DELAY, "GebLenderFirstResortRewardsVested/invalid-exit-delay");
           exitDelay = data;
         }
         else if (parameter == "minStakedTokensToKeep") {
-          require(data > 0, "ProtocolTokenLenderFirstResort/null-min-staked-tokens");
+          require(data > 0, "GebLenderFirstResortRewardsVested/null-min-staked-tokens");
           minStakedTokensToKeep = data;
         }
         else if (parameter == "tokensToAuction") {
-          require(data > 0, "ProtocolTokenLenderFirstResort/invalid-tokens-to-auction");
+          require(data > 0, "GebLenderFirstResortRewardsVested/invalid-tokens-to-auction");
           tokensToAuction = data;
         }
         else if (parameter == "systemCoinsToRequest") {
-          require(data > 0, "ProtocolTokenLenderFirstResort/invalid-sys-coins-to-request");
+          require(data > 0, "GebLenderFirstResortRewardsVested/invalid-sys-coins-to-request");
           systemCoinsToRequest = data;
         }
         else if (parameter == "maxConcurrentAuctions") {
-          require(data > 1, "ProtocolTokenLenderFirstResort/invalid-max-concurrent-auctions");
+          require(data > 1, "GebLenderFirstResortRewardsVested/invalid-max-concurrent-auctions");
           maxConcurrentAuctions = data;
         }
         else if (parameter == "escrowPaused") {
-          require(data <= 1, "ProtocolTokenLenderFirstResort/invalid-escrow-paused");
+          require(data <= 1, "GebLenderFirstResortRewardsVested/invalid-escrow-paused");
           escrowPaused = data;
         }
         else if (parameter == "percentageVested") {
-          require(data < 100, "ProtocolTokenLenderFirstResort/invalid-percentage-vested");
+          require(data < 100, "GebLenderFirstResortRewardsVested/invalid-percentage-vested");
           percentageVested = data;
         }
-        else revert("ProtocolTokenLenderFirstResort/modify-unrecognized-param");
+        else revert("GebLenderFirstResortRewardsVested/modify-unrecognized-param");
         emit ModifyParameters(parameter, data);
     }
     /*
@@ -329,7 +337,7 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
     * @param data New value for the parameter
     */
     function modifyParameters(bytes32 parameter, address data) external isAuthorized {
-        require(data != address(0), "ProtocolTokenLenderFirstResort/null-data");
+        require(data != address(0), "GebLenderFirstResortRewardsVested/null-data");
 
         if (parameter == "auctionHouse") {
           auctionHouse = AuctionHouseLike(data);
@@ -343,7 +351,7 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
         else if (parameter == "escrow") {
           escrow = StakingRewardsEscrowLike(data);
         }
-        else revert("ProtocolTokenLenderFirstResort/modify-unrecognized-param");
+        else revert("GebLenderFirstResortRewardsVested/modify-unrecognized-param");
         emit ModifyParameters(parameter, data);
     }
 
@@ -481,7 +489,7 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
     * @notify Create a new auction that sells ancestor tokens in exchange for system coins
     */
     function auctionAncestorTokens() external nonReentrant {
-        require(canAuctionTokens(), "ProtocolTokenLenderFirstResort/cannot-auction-tokens");
+        require(canAuctionTokens(), "GebLenderFirstResortRewardsVested/cannot-auction-tokens");
 
         ancestorPool.transfer(address(this), tokensToAuction);
         ancestorPool.token().approve(address(auctionHouse), tokensToAuction);
@@ -496,12 +504,14 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
     * @param wad The amount of ancestor tokens to join
     */
     function join(uint256 wad) external nonReentrant payRewards {
-        require(both(canJoin, !protocolUnderwater()), "ProtocolTokenLenderFirstResort/join-not-allowed");
-        require(wad > 0, "ProtocolTokenLenderFirstResort/null-ancestor-to-join");
+        require(both(canJoin, !protocolUnderwater()), "GebLenderFirstResortRewardsVested/join-not-allowed");
+        require(wad > 0, "GebLenderFirstResortRewardsVested/null-ancestor-to-join");
         uint256 price = joinPrice(wad);
-        require(price > 0, "ProtocolTokenLenderFirstResort/null-join-price");
+        require(price > 0, "GebLenderFirstResortRewardsVested/null-join-price");
 
-        require(ancestorPool.token().transferFrom(msg.sender, address(ancestorPool), wad), "ProtocolTokenLenderFirstResort/could-not-transfer-ancestor");
+        require(ancestorPool.token().transferFrom(msg.sender, address(ancestorPool), wad), "GebLenderFirstResortRewardsVested/could-not-transfer-ancestor");
+        descendant.mint(msg.sender, price);
+
         descendantBalanceOf[msg.sender] = addition(descendantBalanceOf[msg.sender], price);
         stakedSupply = addition(stakedSupply, price);
 
@@ -512,12 +522,13 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
     * @param wad The amount of tokens to exit
     */
     function requestExit(uint wad) external nonReentrant payRewards {
-        require(wad > 0, "ProtocolTokenLenderFirstResort/null-amount-to-exit");
+        require(wad > 0, "GebLenderFirstResortRewardsVested/null-amount-to-exit");
 
         exitRequests[msg.sender].deadline      = addition(now, exitDelay);
         exitRequests[msg.sender].lockedAmount  = addition(exitRequests[msg.sender].lockedAmount, wad);
 
         descendantBalanceOf[msg.sender] = subtract(descendantBalanceOf[msg.sender], wad);
+        descendant.burn(msg.sender, wad);
 
         emit RequestExit(msg.sender, exitRequests[msg.sender].deadline, wad);
     }
@@ -525,12 +536,12 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
     * @notify Exit ancestor tokens
     */
     function exit() external nonReentrant {
-        require(both(now >= exitRequests[msg.sender].deadline, exitRequests[msg.sender].lockedAmount > 0), "ProtocolTokenLenderFirstResort/wait-more");
-        require(either(!protocolUnderwater(), forcedExit), "ProtocolTokenLenderFirstResort/exit-not-allowed");
+        require(both(now >= exitRequests[msg.sender].deadline, exitRequests[msg.sender].lockedAmount > 0), "GebLenderFirstResortRewardsVested/wait-more");
+        require(either(!protocolUnderwater(), forcedExit), "GebLenderFirstResortRewardsVested/exit-not-allowed");
 
         uint256 price = exitPrice(exitRequests[msg.sender].lockedAmount);
         stakedSupply  = subtract(stakedSupply, exitRequests[msg.sender].lockedAmount);
-        require(ancestorPool.transfer(msg.sender, price), "ProtocolTokenLenderFirstResort/could-not-transfer-ancestor");
+        require(ancestorPool.transfer(msg.sender, price), "GebLenderFirstResortRewardsVested/could-not-transfer-ancestor");
         emit Exit(msg.sender, price, exitRequests[msg.sender].lockedAmount);
         delete exitRequests[msg.sender];
     }
