@@ -44,8 +44,8 @@ abstract contract SAFEEngineLike {
 abstract contract RewardDripperLike {
     function dripReward() virtual external;
     function dripReward(address) virtual external;
-    function rewardPerBlock() virtual external returns (uint256);
-    function rewardToken() virtual external returns (TokenLike);
+    function rewardPerBlock() virtual external view returns (uint256);
+    function rewardToken() virtual external view returns (TokenLike);
 }
 abstract contract StakingRewardsEscrowLike {
     function escrowRewards(address, uint256) virtual external;
@@ -420,6 +420,25 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
           !canAuctionTokens(),
           either(auctionHouse.activeStakedTokenAuctions() == 0, bypassAuctions)
         );
+    }
+
+    /*
+    * @notice Returns unclaimed rewards for a given user
+    */
+    function pendingRewards(address user) public view returns (uint256) {
+        uint accTokensPerShare_ = accTokensPerShare;
+        if (block.number > lastRewardBlock && stakedSupply != 0) {
+            uint increaseInBalance = (block.number - lastRewardBlock) * rewardDripper.rewardPerBlock();
+            accTokensPerShare_ = addition(accTokensPerShare_, multiply(increaseInBalance, RAY) / stakedSupply);
+        }
+        return subtract(multiply(descendantBalanceOf[user], accTokensPerShare_) / RAY, rewardDebt[user]);
+    }
+
+    /*
+    * @notice Returns rewards earned per block for each token deposited (WAD)
+    */
+    function rewardRate() public view returns (uint256) {
+        return rewardDripper.rewardPerBlock() / stakedSupply;
     }
 
     // --- Core Logic ---

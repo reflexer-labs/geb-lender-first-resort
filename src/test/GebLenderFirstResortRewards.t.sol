@@ -389,6 +389,29 @@ contract GebLenderFirstResortRewardsTest is DSTest {
         unauth.doModifyParameters("systemCoinsToRequest", 5 ether);
     }
 
+    function test_pending_rewards() public {
+        uint amount = 1 ether;
+
+        ancestor.approve(address(stakingPool), amount);
+        uint price = stakingPool.joinPrice(amount);
+
+        stakingPool.join(amount);
+
+        assertEq(ancestor.balanceOf(address(stakingPool.ancestorPool())), amount);
+        assertEq(stakingPool.descendantBalanceOf(address(this)),price);
+
+        assertEq(stakingPool.pendingRewards(address(this)), 0);
+        stakingPool.getRewards();
+
+        hevm.roll(block.number + 10);
+        assertEq(stakingPool.pendingRewards(address(this)), 10 ether);
+        stakingPool.getRewards();
+        assertEq(stakingPool.pendingRewards(address(this)), 0);
+
+        hevm.roll(block.number + 5);
+        assertEq(stakingPool.pendingRewards(address(this)), 5 ether);
+    }
+
     function test_join() public {
         uint amount = 1 ether;
 
