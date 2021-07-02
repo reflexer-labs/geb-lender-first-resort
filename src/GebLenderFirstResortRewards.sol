@@ -396,6 +396,7 @@ contract GebLenderFirstResortRewards is ReentrancyGuard {
 
     /*
     * @notice Returns unclaimed rewards for a given user
+    * @param user The user for which to return pending rewards
     */
     function pendingRewards(address user) public view returns (uint256) {
         uint accTokensPerShare_ = accTokensPerShare;
