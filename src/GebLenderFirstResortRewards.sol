@@ -411,7 +411,7 @@ contract GebLenderFirstResortRewards is ReentrancyGuard {
     * @notice Returns rewards earned per block for each token deposited (WAD)
     */
     function rewardRate() public view returns (uint256) {
-        return rewardDripper.rewardPerBlock() / stakedSupply;
+        return (rewardDripper.rewardPerBlock() * WAD) / stakedSupply;
     }
 
     // --- Core Logic ---
