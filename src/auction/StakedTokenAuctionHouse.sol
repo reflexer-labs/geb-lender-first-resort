@@ -25,7 +25,7 @@ abstract contract TokenLike {
     function transferFrom(address,address,uint256) virtual external returns (bool);
 }
 abstract contract AccountingEngineLike {
-    function totalOnAuctionDebt() virtual public returns (uint256);
+    function totalOnAuctionDebt() virtual external returns (uint256);
     function cancelAuctionedDebtWithSurplus(uint256) virtual external;
 }
 
