@@ -196,6 +196,7 @@ contract GebLenderFirstResortRewards is ReentrancyGuard {
         require(safeEngine_ != address(0), "GebLenderFirstResortRewards/null-safe-engine");
         require(rewardDripper_ != address(0), "GebLenderFirstResortRewards/null-reward-dripper");
         require(descendant_ != address(0), "GebLenderFirstResortRewards/null-descendant");
+        require(ancestor_ != address(0), "GebLenderFirstResortRewards/null-descendant");
 
         authorizedAccounts[msg.sender] = 1;
         canJoin                        = true;
