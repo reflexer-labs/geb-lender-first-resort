@@ -62,9 +62,9 @@ contract TokenPool {
     }
 
     // @notice Transfers tokens from the pool (callable by owner only)
-    function transfer(address to, uint256 wad) public returns (bool) {
+    function transfer(address to, uint256 wad) public {
         require(msg.sender == owner, "unauthorized");
-        return token.transfer(to, wad);
+        require(token.transfer(to, wad), "TokenPool/failed-transfer");
     }
 
     // @notice Returns token balance of the pool
@@ -561,7 +561,7 @@ contract GebLenderFirstResortRewardsVested is ReentrancyGuard {
 
         uint256 price = exitPrice(exitRequests[msg.sender].lockedAmount);
         stakedSupply  = subtract(stakedSupply, exitRequests[msg.sender].lockedAmount);
-        require(ancestorPool.transfer(msg.sender, price), "GebLenderFirstResortRewardsVested/could-not-transfer-ancestor");
+        ancestorPool.transfer(msg.sender, price);
         emit Exit(msg.sender, price, exitRequests[msg.sender].lockedAmount);
         delete exitRequests[msg.sender];
     }
