@@ -163,7 +163,7 @@ contract AutoRewardDripper {
         require(dst != address(0), "AutoRewardDripper/null-dst");
         require(amount > 0, "AutoRewardDripper/null-amount");
 
-        rewardToken.transfer(dst, amount);
+        require(rewardToken.transfer(dst, amount), "AutoRewardDripper/failed-transfer");
 
         emit TransferTokenOut(dst, amount);
     }
@@ -198,7 +198,7 @@ contract AutoRewardDripper {
         recomputePerBlockReward();
 
         if (amountToTransfer == 0) return;
-        rewardToken.transfer(to, amountToTransfer);
+        require(rewardToken.transfer(to, amountToTransfer), "AutoRewardDripper/failed-transfer");
 
         emit DripReward(to, amountToTransfer);
     }

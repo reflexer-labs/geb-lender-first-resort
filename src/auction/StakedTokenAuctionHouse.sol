@@ -23,6 +23,7 @@ abstract contract SAFEEngineLike {
 }
 abstract contract TokenLike {
     function transferFrom(address,address,uint256) virtual external returns (bool);
+    function transfer(address,uint) virtual external returns (bool);
 }
 abstract contract AccountingEngineLike {
     function totalOnAuctionDebt() virtual external returns (uint256);
@@ -302,7 +303,7 @@ contract StakedTokenAuctionHouse {
         AccountingEngineLike(accountingEngine).cancelAuctionedDebtWithSurplus(minimum(bid, totalOnAuctionDebt));
 
         // transfer staked tokens to the high bidder
-        stakedToken.transferFrom(address(this), highBidder, amountToSell);
+        require(stakedToken.transfer(highBidder, amountToSell), "StakedTokenAuctionHouse/failed-transfer");
 
         emit SettleAuction(id, activeStakedTokenAuctions);
     }
@@ -330,7 +331,7 @@ contract StakedTokenAuctionHouse {
         safeEngine.transferInternalCoins(address(this), bids[id].highBidder, bids[id].bidAmount);
 
         // send the staked tokens to the token burner
-        stakedToken.transferFrom(address(this), tokenBurner, bids[id].amountToSell);
+        require(stakedToken.transfer(tokenBurner, bids[id].amountToSell), "StakedTokenAuctionHouse/failed-transfer");
 
         emit TerminateAuctionPrematurely(id, msg.sender, bids[id].highBidder, bids[id].bidAmount, activeStakedTokenAuctions);
         delete bids[id];
