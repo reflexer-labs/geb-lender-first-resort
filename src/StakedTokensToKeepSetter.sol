@@ -56,6 +56,8 @@ contract StakedTokensToKeepSetter {
     // SAFE database
     SAFEEngineLike           public safeEngine;
 
+    uint256 public constant  MIN_TOKENS = 1 ether;
+
     // --- Events ---
     event AddAuthorization(address account);
     event RemoveAuthorization(address account);
@@ -125,7 +127,9 @@ contract StakedTokensToKeepSetter {
         TokenLike ancestorToken    = TokenLike(address(ancestorPool.token()));
 
         uint256 tokensToKeep       = multiply(tokenPercentageToKeep, ancestorToken.balanceOf(address(ancestorPool))) / HUNDRED;
-        require(tokensToKeep > 0, "StakedTokensToKeepSetter/null-tokens-to-keep");
+        if (tokensToKeep == 0) {
+          tokensToKeep = MIN_TOKENS;
+        }
 
         lenderFirstResort.modifyParameters("minStakedTokensToKeep", tokensToKeep);
 
