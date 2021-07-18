@@ -8,15 +8,15 @@ abstract contract AccountingEngineLike {
     function unqueuedUnauctionedDebt() virtual public view returns (uint256);
 }
 abstract contract GebLenderFirstResortLike {
-    function ancestorPool() external view returns (address);
-    function modifyParameters(bytes32, uint256) external;
+    function ancestorPool() virtual external view returns (address);
+    function modifyParameters(bytes32, uint256) virtual external;
 }
 abstract contract SAFEEngineLike {
     function coinBalance(address) virtual public view returns (uint256);
     function debtBalance(address) virtual public view returns (uint256);
 }
 abstract contract TokenPoolLike {
-    function token() external view returns (address);
+    function token() virtual external view returns (address);
 }
 
 contract StakedTokensToKeepSetter {
@@ -121,8 +121,8 @@ contract StakedTokensToKeepSetter {
     function recomputeTokensToKeep() external {
         require(!protocolUnderwater(), "StakedTokensToKeepSetter/cannot-compute-when-underwater");
 
-        TokenPoolLike ancestorPool = TokenPoolLike(lenderFirstResort.ancestorPool());
-        TokenLike ancestorToken    = ancestorPool.token();
+        TokenPoolLike ancestorPool = TokenPoolLike(address(lenderFirstResort.ancestorPool()));
+        TokenLike ancestorToken    = TokenLike(address(ancestorPool.token()));
 
         uint256 tokensToKeep       = multiply(tokenPercentageToKeep, ancestorToken.balanceOf(address(ancestorPool))) / HUNDRED;
         require(tokensToKeep > 0, "StakedTokensToKeepSetter/null-tokens-to-keep");
