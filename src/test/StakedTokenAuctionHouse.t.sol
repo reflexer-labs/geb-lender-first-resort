@@ -208,6 +208,25 @@ contract StakedTokenAuctionHouseTest is DSTest {
         unauth.doModifyParameters("rewardPerBlock", 5 ether);
     }
 
+    function testFail_modify_parameters_null_address() public {
+        auctionHouse.modifyParameters("tokenBurner", address(0));
+    }
+
+    function testFail_modify_parameters_null_uint() public {
+        auctionHouse.modifyParameters("rewardPerBlock", 0);
+    }
+
+
+    function testFail_modify_parameters_disabled_address() public {
+        auctionHouse.disableContract();
+        auctionHouse.modifyParameters("tokenBurner", address(1));
+    }
+
+    function testFail_modify_parameters_disabled_uint() public {
+        auctionHouse.disableContract();
+        auctionHouse.modifyParameters("rewardPerBlock", 1);
+    }
+
     function test_start_auction() public {
         assertEq(auctionHouse.auctionsStarted(), 1);
         (uint256 bidAmount, uint256 amountToSell, address highBidder,, uint48  auctionDeadline) =
