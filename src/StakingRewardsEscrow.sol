@@ -67,13 +67,17 @@ contract StakingRewardsEscrow is ReentrancyGuard {
     uint256   public escrowDuration;
     // Time in a slot during which rewards to escrow can be added without creating a new escrow slot
     uint256   public durationToStartEscrow;
+    // Current amount of slots to claim in one shot
+    uint256   public slotsToClaim;
     // The token to escrow
     TokenLike public token;
 
-    uint256   public constant MAX_ESCROW_DURATION          = 180 days;
+    uint256   public constant MAX_ESCROW_DURATION          = 365 days;
     uint256   public constant MAX_DURATION_TO_START_ESCROW = 30 days;
-    uint256   public constant MAX_SLOTS_TO_CLAIM           = 15;
+    uint256   public constant MAX_SLOTS_TO_CLAIM           = 25;
 
+    // Oldest slot from which to start claiming unlocked rewards
+    mapping (address => uint256)                        public oldestEscrowSlot;
     // Next slot to fill for every user
     mapping (address => uint256)                        public currentEscrowSlot;
     // All escrows for all accounts
@@ -85,7 +89,7 @@ contract StakingRewardsEscrow is ReentrancyGuard {
     event ModifyParameters(bytes32 indexed parameter, uint256 data);
     event ModifyParameters(bytes32 indexed parameter, address data);
     event EscrowRewards(address indexed who, uint256 amount, uint256 currentEscrowSlot);
-    event ClaimRewards(address indexed who, uint256 amount, uint256 startRange, uint256 endRange);
+    event ClaimRewards(address indexed who, uint256 amount);
 
     constructor(
       address escrowRequestor_,
@@ -105,6 +109,7 @@ contract StakingRewardsEscrow is ReentrancyGuard {
       token                  = TokenLike(token_);
       escrowDuration         = escrowDuration_;
       durationToStartEscrow  = durationToStartEscrow_;
+      slotsToClaim           = MAX_SLOTS_TO_CLAIM;
 
       emit AddAuthorization(msg.sender);
     }
@@ -127,6 +132,9 @@ contract StakingRewardsEscrow is ReentrancyGuard {
     function multiply(uint x, uint y) internal pure returns (uint z) {
         require(y == 0 || (z = x * y) / y == x, "StakingRewardsEscrow/mul-overflow");
     }
+    function minimum(uint256 x, uint256 y) internal pure returns (uint256 z) {
+        return x <= y ? x : y;
+    }
 
     // --- Administration ---
     /*
@@ -144,6 +152,10 @@ contract StakingRewardsEscrow is ReentrancyGuard {
           require(both(data > 1, data <= MAX_DURATION_TO_START_ESCROW), "StakingRewardsEscrow/duration-to-start-escrow");
           require(data < escrowDuration, "StakingRewardsEscrow/not-lower-than-escrow-duration");
           durationToStartEscrow = data;
+        }
+        else if (parameter == "slotsToClaim") {
+          require(both(data >= 1, data <= MAX_SLOTS_TO_CLAIM), "StakingRewardsEscrow/invalid-slots-to-claim");
+          slotsToClaim = data;
         }
         else revert("StakingRewardsEscrow/modify-unrecognized-param");
         emit ModifyParameters(parameter, data);
@@ -174,31 +186,28 @@ contract StakingRewardsEscrow is ReentrancyGuard {
         require(who != address(0), "StakingRewardsEscrow/null-who");
         require(amount > 0, "StakingRewardsEscrow/null-amount");
 
-        EscrowSlot memory escrowReward = escrows[msg.sender][currentEscrowSlot[msg.sender]];
-
         if (
-          either(currentEscrowSlot[msg.sender] == 0,
-          now > addition(escrowReward.startDate, durationToStartEscrow))
+          either(currentEscrowSlot[who] == 0,
+          now > addition(escrows[who][currentEscrowSlot[who] - 1].startDate, durationToStartEscrow))
         ) {
-          currentEscrowSlot[msg.sender] = addition(currentEscrowSlot[msg.sender], 1);
-          escrowReward = EscrowSlot(amount, now, escrowDuration, 0, 0);
+          escrows[who][currentEscrowSlot[who]] = EscrowSlot(amount, now, escrowDuration, now, 0);
+          currentEscrowSlot[who] = addition(currentEscrowSlot[who], 1);
         } else {
-          escrowReward.total = addition(escrowReward.total, amount);
+          escrows[who][currentEscrowSlot[who] - 1].total = addition(escrows[who][currentEscrowSlot[who] - 1].total, amount);
         }
 
-        emit EscrowRewards(who, amount, currentEscrowSlot[msg.sender]);
+        emit EscrowRewards(who, amount, currentEscrowSlot[who] - 1);
     }
     /*
-    * @notice Claim vested tokens
+    * @notice Return the total amount of tokens that can be claimed right now for an address
     * @param who The address to claim on behalf of
-    * @param startRange The slot index from which to start claiming
-    * @param endRange The slot index to end claiming at
     */
-    function claimTokens(address who, uint256 startRange, uint256 endRange) public nonReentrant {
-        require(currentEscrowSlot[who] > 0, "StakingRewardsEscrow/invalid-address");
-        require(startRange <= endRange, "StakingRewardsEscrow/invalid-range");
-        require(endRange < currentEscrowSlot[who], "StakingRewardsEscrow/invalid-end");
-        require(subtract(endRange, startRange) <= MAX_SLOTS_TO_CLAIM, "StakingRewardsEscrow/exceeds-max-slots");
+    function getClaimableTokens(address who) public view returns (uint256) {
+        if (currentEscrowSlot[who] == 0) return 0;
+        if (oldestEscrowSlot[who] >= currentEscrowSlot[who]) return 0;
+
+        uint256 lastSlotToClaim = (subtract(currentEscrowSlot[who], oldestEscrowSlot[who]) > slotsToClaim) ?
+          addition(oldestEscrowSlot[who], subtract(slotsToClaim, 1)) : subtract(currentEscrowSlot[who], 1);
 
         EscrowSlot memory escrowReward;
 
@@ -206,21 +215,73 @@ contract StakingRewardsEscrow is ReentrancyGuard {
         uint256 endDate;
         uint256 reward;
 
-        for (uint i = startRange; i < endRange; i++) {
+        for (uint i = oldestEscrowSlot[who]; i <= lastSlotToClaim; i++) {
             escrowReward = escrows[who][i];
             endDate      = addition(escrowReward.startDate, escrowReward.duration);
 
-            if (escrowReward.amountClaimed >= escrowReward.total) continue;
+            if (escrowReward.amountClaimed >= escrowReward.total) {
+              continue;
+            }
+
+            if (both(escrowReward.claimedUntil < endDate, now >= endDate)) {
+              totalToTransfer = addition(totalToTransfer, subtract(escrowReward.total, escrowReward.amountClaimed));
+              continue;
+            }
+
+            if (escrowReward.claimedUntil == now) continue;
+
+            reward = subtract(escrowReward.total, escrowReward.amountClaimed) / subtract(endDate, escrowReward.claimedUntil);
+            reward = multiply(reward, subtract(now, escrowReward.claimedUntil));
+            if (addition(escrowReward.amountClaimed, reward) > escrowReward.total) {
+              reward = subtract(escrowReward.total, escrowReward.amountClaimed);
+            }
+
+            totalToTransfer = addition(totalToTransfer, reward);
+        }
+
+        return totalToTransfer;
+    }
+    /*
+    * @notice Claim vested tokens
+    * @param who The address to claim on behalf of
+    */
+    function claimTokens(address who) public nonReentrant {
+        require(currentEscrowSlot[who] > 0, "StakingRewardsEscrow/invalid-address");
+        require(oldestEscrowSlot[who] < currentEscrowSlot[who], "StakingRewardsEscrow/no-slot-to-claim");
+
+        uint256 lastSlotToClaim = (subtract(currentEscrowSlot[who], oldestEscrowSlot[who]) > slotsToClaim) ?
+          addition(oldestEscrowSlot[who], subtract(slotsToClaim, 1)) : subtract(currentEscrowSlot[who], 1);
+
+        EscrowSlot storage escrowReward;
+
+        uint256 totalToTransfer;
+        uint256 endDate;
+        uint256 reward;
+
+        for (uint i = oldestEscrowSlot[who]; i <= lastSlotToClaim; i++) {
+            escrowReward = escrows[who][i];
+            endDate      = addition(escrowReward.startDate, escrowReward.duration);
+
+            if (escrowReward.amountClaimed >= escrowReward.total) {
+              oldestEscrowSlot[who] = addition(oldestEscrowSlot[who], 1);
+              continue;
+            }
+
             if (both(escrowReward.claimedUntil < endDate, now >= endDate)) {
               totalToTransfer            = addition(totalToTransfer, subtract(escrowReward.total, escrowReward.amountClaimed));
               escrowReward.amountClaimed = escrowReward.total;
               escrowReward.claimedUntil  = now;
+              oldestEscrowSlot[who]      = addition(oldestEscrowSlot[who], 1);
               continue;
             }
 
+            if (escrowReward.claimedUntil == now) continue;
+
             reward = subtract(escrowReward.total, escrowReward.amountClaimed) / subtract(endDate, escrowReward.claimedUntil);
             reward = multiply(reward, subtract(now, escrowReward.claimedUntil));
-            require(addition(escrowReward.amountClaimed, reward) <= escrowReward.total, "StakingRewardsEscrow/reward-more-than-total");
+            if (addition(escrowReward.amountClaimed, reward) > escrowReward.total) {
+              reward = subtract(escrowReward.total, escrowReward.amountClaimed);
+            }
 
             totalToTransfer            = addition(totalToTransfer, reward);
             escrowReward.amountClaimed = addition(escrowReward.amountClaimed, reward);
@@ -231,6 +292,6 @@ contract StakingRewardsEscrow is ReentrancyGuard {
             require(token.transfer(who, totalToTransfer), "StakingRewardsEscrow/cannot-transfer-rewards");
         }
 
-        emit ClaimRewards(who, totalToTransfer, startRange, endRange);
+        emit ClaimRewards(who, totalToTransfer);
     }
 }
