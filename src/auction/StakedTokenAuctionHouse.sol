@@ -170,6 +170,7 @@ contract StakedTokenAuctionHouse {
      */
     function modifyParameters(bytes32 parameter, uint256 data) external isAuthorized {
         require(data > 0, "StakedTokenAuctionHouse/null-data");
+        require(contractEnabled == 1, "StakedTokenAuctionHouse/contract-not-enabled");
 
         if (parameter == "bidIncrease") {
           require(data > ONE, "StakedTokenAuctionHouse/invalid-bid-increase");
@@ -193,6 +194,7 @@ contract StakedTokenAuctionHouse {
      * @param addr New contract address
      */
     function modifyParameters(bytes32 parameter, address addr) external isAuthorized {
+        require(addr != address(0), "StakedTokenAuctionHouse/null-addr");
         require(contractEnabled == 1, "StakedTokenAuctionHouse/contract-not-enabled");
         if (parameter == "accountingEngine") accountingEngine = addr;
         else if (parameter == "tokenBurner") tokenBurner = addr;
