@@ -278,6 +278,8 @@ contract StakingRewardsEscrowTest is DSTest {
 
         stakingPool.getRewards();
         assertTrue(rewardToken.balanceOf(address(this)) >= 28 ether * (100 - percentageVested) / 100 - 1);
+
+        assertEq(escrow.getTokensBeingEscrowed(address(this)), 19600000000000000000);
     }
     function test_rewards_after_slashing() public {
         uint amount = 1000 ether;
@@ -310,6 +312,8 @@ contract StakingRewardsEscrowTest is DSTest {
         assertEq(ancestor.balanceOf(address(this)), previousBalance + price);
         assertEq(stakingPool.descendantBalanceOf(address(this)), 0);
         assertEq(rewardToken.balanceOf(address(this)), 32 ether * (100 - percentageVested) / 100); // 1 eth per block
+
+        assertEq(escrow.getTokensBeingEscrowed(address(this)), 22400000000000000000);
     }
     function test_multi_escrow_slots_from_get_rewards() public {
         assertEq(address(escrow.escrowRequestor()), address(stakingPool));
@@ -342,6 +346,8 @@ contract StakingRewardsEscrowTest is DSTest {
           assertEq(claimedUntil, now - escrow.durationToStartEscrow() - 1);
           assertEq(amountClaimed, 0);
         }
+
+        assertEq(escrow.getTokensBeingEscrowed(address(this)), 70 ether);
     }
     function test_escrow_same_slot_multiple_times() public {
         assertEq(address(escrow.escrowRequestor()), address(stakingPool));
@@ -376,6 +382,7 @@ contract StakingRewardsEscrowTest is DSTest {
         }
 
         assertEq(escrow.currentEscrowSlot(address(this)), 1);
+        assertEq(escrow.getTokensBeingEscrowed(address(this)), 70 ether);
     }
     function test_get_claimableTokens_no_slot() public {
         assertEq(escrow.getClaimableTokens(address(0x123)), 0);
@@ -461,6 +468,8 @@ contract StakingRewardsEscrowTest is DSTest {
         assertEq(escrow.getClaimableTokens(address(this)), 6999999999993216000);
         escrow.claimTokens(address(this));
 
+        assertEq(escrow.getTokensBeingEscrowed(address(this)), 7000000000006784000);
+
         hevm.warp(now + escrow.escrowDuration() / 2);
         assertEq(escrow.getClaimableTokens(address(this)), 7000000000006784000);
         escrow.claimTokens(address(this));
@@ -483,6 +492,7 @@ contract StakingRewardsEscrowTest is DSTest {
 
         assertEq(rewardToken.balanceOf(address(escrow)), 0);
         assertEq(escrow.oldestEscrowSlot(address(this)), escrow.currentEscrowSlot(address(this)));
+        assertEq(escrow.getTokensBeingEscrowed(address(this)), 0);
     }
     function test_multi_slot_get_claimable_tokens() public {
         uint amount = 10 ether;
@@ -530,6 +540,8 @@ contract StakingRewardsEscrowTest is DSTest {
             escrow.claimTokens(address(this));
             hevm.warp(now + escrow.escrowDuration() / 10);
         }
+
+        assertEq(escrow.getTokensBeingEscrowed(address(this)), 50244440843623866736);
 
         // Checks
         (

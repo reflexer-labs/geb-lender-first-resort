@@ -198,6 +198,35 @@ contract StakingRewardsEscrow is ReentrancyGuard {
 
         emit EscrowRewards(who, amount, currentEscrowSlot[who] - 1);
     }
+    /**
+    * @notice Return the total amount of tokens that are being escrowed for a specific account
+    * @param who The address for which we calculate the amount of tokens that are still waiting to be unlocked
+    */
+    function getTokensBeingEscrowed(address who) public view returns (uint256) {
+        if (oldestEscrowSlot[who] >= currentEscrowSlot[who]) return 0;
+
+        EscrowSlot memory escrowReward;
+
+        uint256 totalEscrowed;
+        uint256 endDate;
+
+        for (uint i = oldestEscrowSlot[who]; i <= currentEscrowSlot[who]; i++) {
+            escrowReward = escrows[who][i];
+            endDate      = addition(escrowReward.startDate, escrowReward.duration);
+
+            if (escrowReward.amountClaimed >= escrowReward.total) {
+              continue;
+            }
+
+            if (both(escrowReward.claimedUntil < endDate, now >= endDate)) {
+              continue;
+            }
+
+            totalEscrowed = addition(totalEscrowed, subtract(escrowReward.total, escrowReward.amountClaimed));
+        }
+
+        return totalEscrowed;
+    }
     /*
     * @notice Return the total amount of tokens that can be claimed right now for an address
     * @param who The address to claim on behalf of
