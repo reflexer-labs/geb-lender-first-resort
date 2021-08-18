@@ -289,4 +289,21 @@ contract AutoRewardDripperTest is DSTest {
         hevm.roll(block.number + 1);
         unauth.doDrip();
     }
+
+    function test_recompute_per_block_reward() public {
+        assertEq(coin.balanceOf(address(dripper)), initTokenAmount);
+        hevm.warp(now + dripper.rewardCalculationDelay());
+
+        dripper.recomputePerBlockReward();
+        assertEq(dripper.rewardPerBlock(), 578703703703703);
+    }
+
+    function test_recompute_per_block_reward_no_balance() public {
+        assertEq(coin.balanceOf(address(dripper)), initTokenAmount);
+        hevm.warp(now + dripper.rewardCalculationDelay());
+
+        dripper.transferTokenOut(address(0xfab), coin.balanceOf(address(dripper))); // empty the dripper
+        dripper.recomputePerBlockReward();
+        assertEq(dripper.rewardPerBlock(), 0);
+    }
 }

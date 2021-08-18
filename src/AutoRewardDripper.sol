@@ -178,7 +178,7 @@ contract AutoRewardDripper {
     */
     function recomputePerBlockReward() public {
         uint256 remainingBalance = rewardToken.balanceOf(address(this));
-        if (either(remainingBalance == 0, subtract(now, lastRewardCalculation) < rewardCalculationDelay)) return;
+        if (subtract(now, lastRewardCalculation) < rewardCalculationDelay) return;
         lastRewardCalculation    = now;
         rewardPerBlock           = (rewardTimeline >= remainingBalance) ? remainingBalance : remainingBalance / rewardTimeline;
         emit RecomputePerBlockReward(rewardPerBlock);
