@@ -1256,6 +1256,46 @@ contract GebLenderFirstResortRewardsSameTokenTest is DSTest {
         assertEq(stakingPool.descendantBalanceOf(address(user2)), 0);
     }
 
+    function test_join_exit_after_slashing() public {
+        uint amount = 100 ether;
+        Caller user1 = new Caller(stakingPool);
+        ancestor.transfer(address(user1), amount);
+        Caller user2 = new Caller(stakingPool);
+        ancestor.transfer(address(user2), amount);
+
+        uint previousBalance1 = ancestor.balanceOf(address(user1));
+        uint previousBalance2 = ancestor.balanceOf(address(user2));
+
+        // join
+        user1.doJoin(amount);
+        user2.doJoin(amount);
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 1000 ether); // underwater
+
+        // auction
+        stakingPool.auctionAncestorTokens();
+
+        assertEq(auctionHouse.activeStakedTokenAuctions(), 1);
+        assertEq(ancestor.balanceOf(address(auctionHouse)), 100 ether);
+
+        Caller user3 = new Caller(stakingPool);
+        ancestor.transfer(address(user3), amount);
+
+        accountingEngine.modifyParameters("unqueuedUnauctionedDebt", 90 ether); // above water
+
+        user3.doJoin(amount); // user joins amount
+        uint descendantBalance = stakingPool.descendantBalanceOf(address(user3));
+
+        user3.doApprove(descendant, address(stakingPool));
+        user3.doRequestExit(descendantBalance);
+
+        hevm.warp(now + exitDelay);
+        user3.doExit();
+
+        assertEq(ancestor.balanceOf(address(user3)), amount);
+        assertEq(stakingPool.descendantBalanceOf(address(user3)), 0);
+    }
+
     function test_rewards_dripper_depleated() public {
         uint amount = 7 ether;
         // leave rewards only for 20 blocks
