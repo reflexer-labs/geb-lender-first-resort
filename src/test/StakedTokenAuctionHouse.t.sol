@@ -387,9 +387,16 @@ contract StakedTokenAuctionHouseTest is DSTest {
 
     function testFail_settle_auction_no_bids() public {
         (,,,, uint auctionDeadline) = auctionHouse.bids(1);
-
         hevm.warp(auctionDeadline + 1);
         auctionHouse.settleAuction(1);
+    }
+
+    function testFail_restart_settled_auctions() public {
+        (,,,, uint auctionDeadline) = auctionHouse.bids(1);
+        auctionHouse.increaseBidSize(1, 10 ether, 105.1 ether);
+        hevm.warp(auctionDeadline + 1);
+        auctionHouse.settleAuction(1);
+        auctionHouse.restartAuction(1);
     }
 
     function test_terminate_auction_prematurely() public {

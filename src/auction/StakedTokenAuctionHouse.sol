@@ -240,6 +240,7 @@ contract StakedTokenAuctionHouse {
     function restartAuction(uint256 id) external {
         require(id <= auctionsStarted, "StakedTokenAuctionHouse/auction-never-started");
         require(bids[id].auctionDeadline < now, "StakedTokenAuctionHouse/not-finished");
+        require(bids[id].auctionDeadline > 0, "StakedTokenAuctionHouse/auction-settled");
         require(bids[id].bidExpiry == 0, "StakedTokenAuctionHouse/bid-already-placed");
 
         uint256 newMinBid        = multiply(minBidDecrease, bids[id].bidAmount) / ONE;
