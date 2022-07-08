@@ -333,10 +333,11 @@ contract StakedTokenAuctionHouse {
         // send the system coin bid back to the high bidder in case there was at least one bid
         safeEngine.transferInternalCoins(address(this), bids[id].highBidder, bids[id].bidAmount);
 
-        // send the staked tokens to the token burner
-        require(stakedToken.transfer(tokenBurner, bids[id].amountToSell), "StakedTokenAuctionHouse/failed-transfer");
-
         emit TerminateAuctionPrematurely(id, msg.sender, bids[id].highBidder, bids[id].bidAmount, activeStakedTokenAuctions);
+        uint256 amountToSell = bids[id].amountToSell;
         delete bids[id];
+
+        // send the staked tokens to the token burner
+        require(stakedToken.transfer(tokenBurner, amountToSell), "StakedTokenAuctionHouse/failed-transfer");
     }
 }
