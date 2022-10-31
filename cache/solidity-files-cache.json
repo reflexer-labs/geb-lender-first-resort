@@ -1,0 +1,1453 @@
+{
+  "_format": "ethers-rs-sol-cache-3",
+  "paths": {
+    "artifacts": "out",
+    "build_infos": "out/build-info",
+    "sources": "src",
+    "tests": "test",
+    "scripts": "script",
+    "libraries": [
+      "lib"
+    ]
+  },
+  "files": {
+    "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol": {
+      "lastModificationDate": 1666996778492,
+      "contentHash": "962996f0e05d5218857a538a62d7c47e",
+      "sourceName": "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">=0.5.0",
+      "artifacts": {
+        "DSTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "test.sol/DSTest.json"
+        }
+      }
+    },
+    "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol": {
+      "lastModificationDate": 1666996879925,
+      "contentHash": "8c01a8e97f2125dc1916eff23852b7cf",
+      "sourceName": "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">=0.6.7",
+      "artifacts": {
+        "DSAuth": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "auth.sol/DSAuth.json"
+        },
+        "DSAuthEvents": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "auth.sol/DSAuthEvents.json"
+        },
+        "DSAuthority": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "auth.sol/DSAuthority.json"
+        }
+      }
+    },
+    "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol": {
+      "lastModificationDate": 1666996880360,
+      "contentHash": "cff077720b1444b4e848afcabf67cc2d",
+      "sourceName": "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">=0.4.23",
+      "artifacts": {
+        "DSNote": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "note.sol/DSNote.json"
+        }
+      }
+    },
+    "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol": {
+      "lastModificationDate": 1666996768544,
+      "contentHash": "509d1a034cf86ed3a0167e16df1cb926",
+      "sourceName": "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol"
+      ],
+      "versionRequirement": ">=0.4.23, <0.7.0",
+      "artifacts": {
+        "DSTokenBase": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "base.sol/DSTokenBase.json"
+        }
+      }
+    },
+    "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol": {
+      "lastModificationDate": 1666996768544,
+      "contentHash": "8744c7ddc9dfc48730487317f2bb6088",
+      "sourceName": "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol"
+      ],
+      "versionRequirement": ">=0.4.23, <0.7.0",
+      "artifacts": {
+        "DSToken": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "token.sol/DSToken.json"
+        }
+      }
+    },
+    "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol": {
+      "lastModificationDate": 1666996824355,
+      "contentHash": "8c550fcfa8bd4f7feb87aaf59c230caf",
+      "sourceName": "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">0.4.13",
+      "artifacts": {
+        "DSMath": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "math.sol/DSMath.json"
+        }
+      }
+    },
+    "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol": {
+      "lastModificationDate": 1666996824804,
+      "contentHash": "6ab15ee97d2d16971c1eb621fbb73fa8",
+      "sourceName": "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol"
+      ],
+      "versionRequirement": ">=0.4.23",
+      "artifacts": {
+        "DSStop": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "stop.sol/DSStop.json"
+        }
+      }
+    },
+    "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol": {
+      "lastModificationDate": 1666996825689,
+      "contentHash": "91b67c77828ed3dad97bd48a2daaa1d3",
+      "sourceName": "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">0.4.20",
+      "artifacts": {
+        "ERC20": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "erc20.sol/ERC20.json"
+        },
+        "ERC20Events": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "erc20.sol/ERC20Events.json"
+        }
+      }
+    },
+    "src/AutoRewardDripper.sol": {
+      "lastModificationDate": 1666996602749,
+      "contentHash": "5ce1db755d5ebe5f46808b60b48bbc5f",
+      "sourceName": "src/AutoRewardDripper.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [],
+      "versionRequirement": "=0.6.7",
+      "artifacts": {
+        "AutoRewardDripper": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "AutoRewardDripper.sol/AutoRewardDripper.json"
+        },
+        "TokenLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "AutoRewardDripper.sol/TokenLike.json"
+        }
+      }
+    },
+    "src/GebLenderFirstResort.sol": {
+      "lastModificationDate": 1666996602749,
+      "contentHash": "42b289bbfd93f1c33d638b86eb335c86",
+      "sourceName": "src/GebLenderFirstResort.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "src/utils/ReentrancyGuard.sol"
+      ],
+      "versionRequirement": "=0.6.7",
+      "artifacts": {
+        "AccountingEngineLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResort.sol/AccountingEngineLike.json"
+        },
+        "AuctionHouseLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResort.sol/AuctionHouseLike.json"
+        },
+        "GebLenderFirstResort": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResort.sol/GebLenderFirstResort.json"
+        },
+        "SAFEEngineLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResort.sol/SAFEEngineLike.json"
+        },
+        "TokenLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResort.sol/TokenLike.json"
+        }
+      }
+    },
+    "src/GebLenderFirstResortRewards.sol": {
+      "lastModificationDate": 1666996602749,
+      "contentHash": "e30d59d38951ffb92145692984f72bee",
+      "sourceName": "src/GebLenderFirstResortRewards.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "src/utils/ReentrancyGuard.sol"
+      ],
+      "versionRequirement": "=0.6.7",
+      "artifacts": {
+        "AccountingEngineLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.sol/AccountingEngineLike.json"
+        },
+        "AuctionHouseLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.sol/AuctionHouseLike.json"
+        },
+        "GebLenderFirstResortRewards": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.sol/GebLenderFirstResortRewards.json"
+        },
+        "RewardDripperLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.sol/RewardDripperLike.json"
+        },
+        "SAFEEngineLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.sol/SAFEEngineLike.json"
+        },
+        "TokenLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.sol/TokenLike.json"
+        },
+        "TokenPool": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.sol/TokenPool.json"
+        }
+      }
+    },
+    "src/GebLenderFirstResortRewardsVested.sol": {
+      "lastModificationDate": 1666996602749,
+      "contentHash": "486a52099cf3feb9008797690613aec6",
+      "sourceName": "src/GebLenderFirstResortRewardsVested.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "src/utils/ReentrancyGuard.sol"
+      ],
+      "versionRequirement": "=0.6.7",
+      "artifacts": {
+        "AccountingEngineLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.sol/AccountingEngineLike.json"
+        },
+        "AuctionHouseLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.sol/AuctionHouseLike.json"
+        },
+        "GebLenderFirstResortRewardsVested": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.sol/GebLenderFirstResortRewardsVested.json"
+        },
+        "RewardDripperLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.sol/RewardDripperLike.json"
+        },
+        "SAFEEngineLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.sol/SAFEEngineLike.json"
+        },
+        "StakingRewardsEscrowLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.sol/StakingRewardsEscrowLike.json"
+        },
+        "TokenLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.sol/TokenLike.json"
+        },
+        "TokenPool": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.sol/TokenPool.json"
+        }
+      }
+    },
+    "src/GebRewards.sol": {
+      "lastModificationDate": 1667229330524,
+      "contentHash": "6412cbb3f0835a876d441bc9e9c07b99",
+      "sourceName": "src/GebRewards.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "src/utils/ReentrancyGuard.sol"
+      ],
+      "versionRequirement": "=0.6.7",
+      "artifacts": {
+        "GebRewards": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebRewards.sol/GebRewards.json"
+        },
+        "RewardDripperLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebRewards.sol/RewardDripperLike.json"
+        },
+        "TokenLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebRewards.sol/TokenLike.json"
+        },
+        "TokenPool": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebRewards.sol/TokenPool.json"
+        }
+      }
+    },
+    "src/RewardDripper.sol": {
+      "lastModificationDate": 1666996602749,
+      "contentHash": "794da63489d3e1249f5e9155c90640c4",
+      "sourceName": "src/RewardDripper.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [],
+      "versionRequirement": "=0.6.7",
+      "artifacts": {
+        "RewardDripper": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "RewardDripper.sol/RewardDripper.json"
+        },
+        "TokenLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "RewardDripper.sol/TokenLike.json"
+        }
+      }
+    },
+    "src/StakedTokensToKeepSetter.sol": {
+      "lastModificationDate": 1666996602749,
+      "contentHash": "da1be3d488a946719ca7bd3298ef0fea",
+      "sourceName": "src/StakedTokensToKeepSetter.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [],
+      "versionRequirement": "=0.6.7",
+      "artifacts": {
+        "AccountingEngineLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.sol/AccountingEngineLike.json"
+        },
+        "GebLenderFirstResortLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.sol/GebLenderFirstResortLike.json"
+        },
+        "SAFEEngineLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.sol/SAFEEngineLike.json"
+        },
+        "StakedTokensToKeepSetter": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.sol/StakedTokensToKeepSetter.json"
+        },
+        "TokenLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.sol/TokenLike.json"
+        },
+        "TokenPoolLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.sol/TokenPoolLike.json"
+        }
+      }
+    },
+    "src/StakingRewardsEscrow.sol": {
+      "lastModificationDate": 1666996602749,
+      "contentHash": "686897503ea419326f93ae6cbd5df654",
+      "sourceName": "src/StakingRewardsEscrow.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "src/utils/ReentrancyGuard.sol"
+      ],
+      "versionRequirement": "=0.6.7",
+      "artifacts": {
+        "StakingRewardsEscrow": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakingRewardsEscrow.sol/StakingRewardsEscrow.json"
+        },
+        "TokenLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakingRewardsEscrow.sol/TokenLike.json"
+        }
+      }
+    },
+    "src/auction/StakedTokenAuctionHouse.sol": {
+      "lastModificationDate": 1666996602749,
+      "contentHash": "37c83991e8f9b112ed4530a4768f9dbb",
+      "sourceName": "src/auction/StakedTokenAuctionHouse.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [],
+      "versionRequirement": "=0.6.7",
+      "artifacts": {
+        "AccountingEngineLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokenAuctionHouse.sol/AccountingEngineLike.json"
+        },
+        "SAFEEngineLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokenAuctionHouse.sol/SAFEEngineLike.json"
+        },
+        "StakedTokenAuctionHouse": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokenAuctionHouse.sol/StakedTokenAuctionHouse.json"
+        },
+        "TokenLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokenAuctionHouse.sol/TokenLike.json"
+        }
+      }
+    },
+    "src/test/AutoRewardDripper.t.sol": {
+      "lastModificationDate": 1666996602749,
+      "contentHash": "e1c0138f72674ea3ca10b6613f620af8",
+      "sourceName": "src/test/AutoRewardDripper.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol",
+        "src/AutoRewardDripper.sol"
+      ],
+      "versionRequirement": ">=0.6.7",
+      "artifacts": {
+        "AutoRewardDripperTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "AutoRewardDripper.t.sol/AutoRewardDripperTest.json"
+        },
+        "Caller": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "AutoRewardDripper.t.sol/Caller.json"
+        },
+        "Hevm": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "AutoRewardDripper.t.sol/Hevm.json"
+        },
+        "Requestor": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "AutoRewardDripper.t.sol/Requestor.json"
+        }
+      }
+    },
+    "src/test/GebLenderFirstResort.t.sol": {
+      "lastModificationDate": 1666996602750,
+      "contentHash": "11351b76908fa93169eb109e4617a70f",
+      "sourceName": "src/test/GebLenderFirstResort.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol",
+        "src/GebLenderFirstResort.sol",
+        "src/utils/ReentrancyGuard.sol"
+      ],
+      "versionRequirement": "^0.6.7",
+      "artifacts": {
+        "AccountingEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResort.t.sol/AccountingEngineMock.json"
+        },
+        "AuctionHouseMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResort.t.sol/AuctionHouseMock.json"
+        },
+        "Caller": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResort.t.sol/Caller.json"
+        },
+        "GebLenderFirstResortTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResort.t.sol/GebLenderFirstResortTest.json"
+        },
+        "Hevm": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResort.t.sol/Hevm.json"
+        },
+        "SAFEEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResort.t.sol/SAFEEngineMock.json"
+        }
+      }
+    },
+    "src/test/GebLenderFirstResortRewards.t.sol": {
+      "lastModificationDate": 1666996602750,
+      "contentHash": "8a762045bca458bfffd1dbd3c3d99bbf",
+      "sourceName": "src/test/GebLenderFirstResortRewards.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol",
+        "src/GebLenderFirstResortRewards.sol",
+        "src/RewardDripper.sol",
+        "src/utils/ReentrancyGuard.sol"
+      ],
+      "versionRequirement": "^0.6.7",
+      "artifacts": {
+        "AccountingEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.t.sol/AccountingEngineMock.json"
+        },
+        "AuctionHouseMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.t.sol/AuctionHouseMock.json"
+        },
+        "Caller": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.t.sol/Caller.json"
+        },
+        "GebLenderFirstResortRewardsSameTokenTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.t.sol/GebLenderFirstResortRewardsSameTokenTest.json"
+        },
+        "GebLenderFirstResortRewardsTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.t.sol/GebLenderFirstResortRewardsTest.json"
+        },
+        "Hevm": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.t.sol/Hevm.json"
+        },
+        "SAFEEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewards.t.sol/SAFEEngineMock.json"
+        }
+      }
+    },
+    "src/test/GebLenderFirstResortRewardsVested.t.sol": {
+      "lastModificationDate": 1666996602750,
+      "contentHash": "2a0686280302b0cfac11eb6faff78c0c",
+      "sourceName": "src/test/GebLenderFirstResortRewardsVested.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol",
+        "src/AutoRewardDripper.sol",
+        "src/GebLenderFirstResortRewardsVested.sol",
+        "src/RewardDripper.sol",
+        "src/utils/ReentrancyGuard.sol"
+      ],
+      "versionRequirement": "^0.6.7",
+      "artifacts": {
+        "AccountingEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.t.sol/AccountingEngineMock.json"
+        },
+        "AuctionHouseMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.t.sol/AuctionHouseMock.json"
+        },
+        "Caller": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.t.sol/Caller.json"
+        },
+        "EscrowMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.t.sol/EscrowMock.json"
+        },
+        "GebLenderFirstResortRewardsVestedAutoDripperTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.t.sol/GebLenderFirstResortRewardsVestedAutoDripperTest.json"
+        },
+        "GebLenderFirstResortRewardsVestedSameTokenTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.t.sol/GebLenderFirstResortRewardsVestedSameTokenTest.json"
+        },
+        "GebLenderFirstResortRewardsVestedTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.t.sol/GebLenderFirstResortRewardsVestedTest.json"
+        },
+        "Hevm": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.t.sol/Hevm.json"
+        },
+        "SAFEEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebLenderFirstResortRewardsVested.t.sol/SAFEEngineMock.json"
+        }
+      }
+    },
+    "src/test/GebRewards.t.sol": {
+      "lastModificationDate": 1667231262512,
+      "contentHash": "96cf2bd0b0eb0b771c142ea789893466",
+      "sourceName": "src/test/GebRewards.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol",
+        "src/GebRewards.sol",
+        "src/RewardDripper.sol",
+        "src/utils/ReentrancyGuard.sol"
+      ],
+      "versionRequirement": "^0.6.7",
+      "artifacts": {
+        "Caller": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebRewards.t.sol/Caller.json"
+        },
+        "GebLenderFirstResortRewardsSameTokenTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebRewards.t.sol/GebLenderFirstResortRewardsSameTokenTest.json"
+        },
+        "GebRewardsTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebRewards.t.sol/GebRewardsTest.json"
+        },
+        "Hevm": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "GebRewards.t.sol/Hevm.json"
+        }
+      }
+    },
+    "src/test/RewardDripper.t.sol": {
+      "lastModificationDate": 1666996602750,
+      "contentHash": "b23ef30213f934ab7d0ec2af83897ba4",
+      "sourceName": "src/test/RewardDripper.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol",
+        "src/RewardDripper.sol"
+      ],
+      "versionRequirement": ">=0.6.7",
+      "artifacts": {
+        "Caller": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "RewardDripper.t.sol/Caller.json"
+        },
+        "Hevm": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "RewardDripper.t.sol/Hevm.json"
+        },
+        "Requestor": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "RewardDripper.t.sol/Requestor.json"
+        },
+        "RewardDripperTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "RewardDripper.t.sol/RewardDripperTest.json"
+        }
+      }
+    },
+    "src/test/StakedTokenAuctionHouse.t.sol": {
+      "lastModificationDate": 1666996602750,
+      "contentHash": "c98bb316c787ccd12fd3107dc63f58e5",
+      "sourceName": "src/test/StakedTokenAuctionHouse.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol",
+        "src/auction/StakedTokenAuctionHouse.sol"
+      ],
+      "versionRequirement": ">=0.6.7",
+      "artifacts": {
+        "AccountingEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokenAuctionHouse.t.sol/AccountingEngineMock.json"
+        },
+        "Caller": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokenAuctionHouse.t.sol/Caller.json"
+        },
+        "Hevm": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokenAuctionHouse.t.sol/Hevm.json"
+        },
+        "SAFEEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokenAuctionHouse.t.sol/SAFEEngineMock.json"
+        },
+        "StakedTokenAuctionHouseTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokenAuctionHouse.t.sol/StakedTokenAuctionHouseTest.json"
+        }
+      }
+    },
+    "src/test/StakedTokensToKeepSetter.t.sol": {
+      "lastModificationDate": 1666996602750,
+      "contentHash": "c5afa17cb69cefe4ca2a09b648db494d",
+      "sourceName": "src/test/StakedTokensToKeepSetter.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol",
+        "src/GebLenderFirstResortRewardsVested.sol",
+        "src/RewardDripper.sol",
+        "src/StakedTokensToKeepSetter.sol",
+        "src/utils/ReentrancyGuard.sol"
+      ],
+      "versionRequirement": "=0.6.7",
+      "artifacts": {
+        "AccountingEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.t.sol/AccountingEngineMock.json"
+        },
+        "AuctionHouseMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.t.sol/AuctionHouseMock.json"
+        },
+        "Caller": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.t.sol/Caller.json"
+        },
+        "EscrowMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.t.sol/EscrowMock.json"
+        },
+        "Hevm": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.t.sol/Hevm.json"
+        },
+        "SAFEEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.t.sol/SAFEEngineMock.json"
+        },
+        "StakedTokensToKeepSetterTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakedTokensToKeepSetter.t.sol/StakedTokensToKeepSetterTest.json"
+        }
+      }
+    },
+    "src/test/StakingRewardsEscrow.t.sol": {
+      "lastModificationDate": 1666996602750,
+      "contentHash": "2ff88d7ec8ae4813cadd65363868dbf9",
+      "sourceName": "src/test/StakingRewardsEscrow.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol",
+        "src/GebLenderFirstResortRewardsVested.sol",
+        "src/RewardDripper.sol",
+        "src/StakingRewardsEscrow.sol",
+        "src/utils/ReentrancyGuard.sol"
+      ],
+      "versionRequirement": "^0.6.7",
+      "artifacts": {
+        "AccountingEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakingRewardsEscrow.t.sol/AccountingEngineMock.json"
+        },
+        "AuctionHouseMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakingRewardsEscrow.t.sol/AuctionHouseMock.json"
+        },
+        "Caller": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakingRewardsEscrow.t.sol/Caller.json"
+        },
+        "Hevm": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakingRewardsEscrow.t.sol/Hevm.json"
+        },
+        "SAFEEngineMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakingRewardsEscrow.t.sol/SAFEEngineMock.json"
+        },
+        "StakingRewardsEscrowTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "StakingRewardsEscrow.t.sol/StakingRewardsEscrowTest.json"
+        }
+      }
+    },
+    "src/utils/ReentrancyGuard.sol": {
+      "lastModificationDate": 1666996602750,
+      "contentHash": "1c60f58cee45c61469e1aea31e4dd879",
+      "sourceName": "src/utils/ReentrancyGuard.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [],
+      "versionRequirement": ">=0.6.0, <0.8.0",
+      "artifacts": {
+        "ReentrancyGuard": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "ReentrancyGuard.sol/ReentrancyGuard.json"
+        }
+      }
+    }
+  }
+}
