@@ -204,7 +204,7 @@ contract ExternallyControlledDripper {
         require(
             to == requestors[0] || to == requestors[1],
             "RewardDripper/invalid-caller"
-        ); 
+        );
 
         uint256 remainingBalance = rewardToken.balanceOf(address(this));
         uint256 amountToTransfer = multiply(
@@ -246,11 +246,11 @@ contract ExternallyControlledDripper {
         // setting rewards per block
         uint blocksInPeriod = updateDelay / 12;
         rewardPerBlock[requestors[0]] =
-            (balance * proportion) /
+            multiply(balance, proportion) /
             WAD /
             blocksInPeriod; // 12s block time
         rewardPerBlock[requestors[1]] =
-            (balance * (WAD - proportion)) /
+            multiply(balance, subtract(WAD, proportion)) /
             WAD /
             blocksInPeriod;
 
