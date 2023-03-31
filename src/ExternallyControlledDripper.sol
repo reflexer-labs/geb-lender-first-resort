@@ -65,8 +65,10 @@ contract ExternallyControlledDripper {
     // --- State Variables/Constants ---
     // Last block when a reward was given
     mapping(address => uint256) public lastRewardBlock;
-    // Amount of tokens distributed per block
-    mapping(address => uint256) public rewardPerBlock;
+    // Share of rewards that goes to requestors [0]. 100% = 1 WAD
+    uint256 public requestorZeroShare;
+    // Total reward per block (sum of requestor0 and requestor1 rewardPerBlocks)
+    uint256 public totalRewardPerBlock;
     // The address that can request rewards
     address[2] public requestors;
     // The reward token being distributed
@@ -75,6 +77,10 @@ contract ExternallyControlledDripper {
     FundsHolderLike public fundsHolder;
     // Contract that sets the rate and updates rewards per block
     address public rateSetter;
+    // Period used to calculate rewards, should match emissions frequency. Default: 30 days
+    uint256 public rewardPeriod;
+    // End of current reward period
+    uint256 public rewardPeriodEnd;    
     // The delay enforced on the controller updates
     uint256 public updateDelay;
     // Last update time
@@ -87,12 +93,14 @@ contract ExternallyControlledDripper {
     event ModifyParameters(bytes32 indexed parameter, address data);
     event DripReward(address requestor, uint256 amountToTransfer);
     event TransferTokenOut(address dst, uint256 amount);
+    event UpdateRewards(uint256 amountReceiver0, uint256 totalRewardPerBlock);
 
     constructor(
         address[2] memory requestors_,
         address rewardToken_,
         address fundsHolder_,
         address rateSetter_,
+        uint256 rewardPeriod_,
         uint256 updateDelay_
     ) public {
         require(requestors_[0] != address(0), "RewardDripper/null-requoestor");
@@ -100,7 +108,8 @@ contract ExternallyControlledDripper {
         require(rewardToken_ != address(0), "RewardDripper/null-reward-token");
         require(fundsHolder_ != address(0), "RewardDripper/null-funds-holder");
         require(rateSetter_ != address(0), "RewardDripper/null-rate-setter");
-        require(updateDelay_ > 0, "RewardDripper/null-reward_frequency");
+        require(rewardPeriod_ > 0, "RewardDripper/null-reward-period");
+        require(updateDelay_ > 0, "RewardDripper/null-update-delay");
 
         authorizedAccounts[msg.sender] = 1;
 
@@ -108,6 +117,7 @@ contract ExternallyControlledDripper {
         rewardToken = TokenLike(rewardToken_);
         fundsHolder = FundsHolderLike(fundsHolder_);
         rateSetter = rateSetter_;
+        rewardPeriod = rewardPeriod_;
         updateDelay = updateDelay_;
 
         lastRewardBlock[requestors_[0]] = block.number;
@@ -117,6 +127,8 @@ contract ExternallyControlledDripper {
         emit ModifyParameters("requestors0", requestors_[0]);
         emit ModifyParameters("requestors1", requestors_[1]);
         emit ModifyParameters("fundsHolder", fundsHolder_);
+        emit ModifyParameters("rateSetter", rateSetter_);
+        emit ModifyParameters("rewardPeriod", rewardPeriod_);
         emit ModifyParameters("updateDelay", updateDelay_);
     }
 
@@ -142,8 +154,16 @@ contract ExternallyControlledDripper {
         uint256 data
     ) external isAuthorized {
         if (parameter == "updateDelay") {
-            require(data > 0, "RewardDripper/invalid-update-delay");
+            require(data > 0, "RewardDripper/invalid-data");
             updateDelay = data;
+        } else if (parameter == "rewardPeriod") {
+            require(data > 0, "RewardDripper/invalid-data");
+            rewardPeriod = data;
+        } else if (parameter == "totalRewardPerBlock") {
+            totalRewardPerBlock = data;
+        } else if (parameter == "requestorZeroShare") {
+            require(data <= WAD, "RewardDripper/invalid-data");
+            requestorZeroShare = data;
         } else revert("RewardDripper/modify-unrecognized-param");
         emit ModifyParameters(parameter, data);
     }
@@ -166,6 +186,8 @@ contract ExternallyControlledDripper {
             lastRewardBlock[data] = block.number;
         } else if (parameter == "fundsHolder") {
             fundsHolder = FundsHolderLike(data);
+        } else if (parameter == "rateSetter") {
+            rateSetter = data;
         } else revert("RewardDripper/modify-unrecognized-param");
         emit ModifyParameters(parameter, data);
     }
@@ -207,9 +229,12 @@ contract ExternallyControlledDripper {
         );
 
         uint256 remainingBalance = rewardToken.balanceOf(address(this));
+        uint256 share = to == requestors[0]
+            ? requestorZeroShare
+            : WAD - requestorZeroShare;
         uint256 amountToTransfer = multiply(
             subtract(block.number, lastRewardBlock[to]),
-            rewardPerBlock[to]
+            multiply(totalRewardPerBlock, share) / WAD
         );
         amountToTransfer = (amountToTransfer > remainingBalance)
             ? remainingBalance
@@ -218,42 +243,53 @@ contract ExternallyControlledDripper {
         lastRewardBlock[to] = block.number;
 
         if (amountToTransfer == 0) return;
-        rewardToken.transfer(to, amountToTransfer);
+        require(
+            rewardToken.transfer(to, amountToTransfer),
+            "RewardDripper/transfer-failed"
+        );
 
         emit DripReward(to, amountToTransfer);
     }
-
+    
     /*
      * @notice Receives a proportion from the controller and sets rewards amounts for a period
      * @dev Can only be called by the controller.
-     * @param Proportion The percentage that will go to requestor[0] (1 WAD = 100%)
+     * @param requestorZeroShare_ The percentage that will go to requestor[0] (1 WAD = 100%)
      */
-    function updateRate(uint256 proportion) external {
+    function updateRate(uint256 requestorZeroShare_) external {
         require(now >= lastUpdateTime + updateDelay, "RewardDripper/too-soon");
         require(msg.sender == rateSetter, "RewardDripper/only-controller");
-        require(proportion <= WAD, "RewardDripper/invalid-proportion");
+        require(requestorZeroShare_ <= WAD, "RewardDripper/invalid-share");
 
-        // drip valued up to block.number
+        // drip values up to block.number
         dripReward(requestors[0]);
         dripReward(requestors[1]);
 
+        if (rewardPeriodEnd <= now) rewardPeriodEnd = now + rewardPeriod;
+
         // pull funds
-        uint256 previousBalance = rewardToken.balanceOf(address(this));
-        fundsHolder.releaseFunds();
-        uint256 balance = rewardToken.balanceOf(address(this)) -
-            previousBalance;
+        try fundsHolder.releaseFunds() {} catch {}
+        uint256 balance = rewardToken.balanceOf(address(this));
 
         // setting rewards per block
-        uint blocksInPeriod = updateDelay / 12;
-        rewardPerBlock[requestors[0]] =
-            multiply(balance, proportion) /
-            WAD /
-            blocksInPeriod; // 12s block time
-        rewardPerBlock[requestors[1]] =
-            multiply(balance, subtract(WAD, proportion)) /
-            WAD /
-            blocksInPeriod;
+        uint blocksInPeriod = (rewardPeriodEnd - now) / 12;
+        totalRewardPerBlock = balance / blocksInPeriod;
+        requestorZeroShare = requestorZeroShare_;
+
+        emit UpdateRewards(requestorZeroShare, totalRewardPerBlock);
 
         lastUpdateTime = now;
+    }
+
+    function rewardPerBlock() external view returns (uint256) {
+        if (msg.sender == requestors[0])
+            return multiply(totalRewardPerBlock, requestorZeroShare) / WAD;
+        else if (msg.sender == requestors[1])
+            return
+                multiply(
+                    totalRewardPerBlock,
+                    subtract(WAD, requestorZeroShare)
+                ) / WAD;
+        else revert("RewardDripper/not-a-requestor");
     }
 }

@@ -17,6 +17,7 @@ contract MockFundsHolder {
     DSToken token;
     address dripper;
     uint256 transferAmount;
+    bool revertOnCall;
 
     constructor(
         address token_,
@@ -32,8 +33,13 @@ contract MockFundsHolder {
         transferAmount = amount;
     }
 
+    function setRevertOnCall(bool roc) external {
+        revertOnCall = roc;
+    }    
+
     function releaseFunds() external {
         require(msg.sender == dripper);
+        require(!revertOnCall);
         token.transfer(msg.sender, transferAmount);
     }
 }
@@ -61,6 +67,7 @@ contract ExternallyControlledDripperTest is DSTest {
             address(coin),
             address(0x1),
             rateSetter,
+            30 days,
             7 days
         );
 
@@ -73,8 +80,7 @@ contract ExternallyControlledDripperTest is DSTest {
 
     // --- Tests ---
     function test_correct_setup() public {
-        assertEq(dripper.rewardPerBlock(alice), 0);
-        assertEq(dripper.rewardPerBlock(bob), 0);
+        assertEq(dripper.totalRewardPerBlock(), 0);
         assertEq(dripper.lastRewardBlock(alice), block.number);
         assertEq(dripper.lastRewardBlock(bob), block.number);
         assertEq(dripper.requestors(0), address(alice));
@@ -83,6 +89,7 @@ contract ExternallyControlledDripperTest is DSTest {
         assertEq(address(dripper.fundsHolder()), address(emitter));
         assertEq(address(dripper.rateSetter()), rateSetter);
         assertEq(dripper.updateDelay(), 7 days);
+        assertEq(dripper.rewardPeriod(), 30 days);
         assertEq(dripper.lastUpdateTime(), 0);
     }
 
@@ -92,6 +99,7 @@ contract ExternallyControlledDripperTest is DSTest {
             address(coin),
             address(0x1),
             rateSetter,
+            30 days,
             7 days
         );
     }
@@ -102,6 +110,7 @@ contract ExternallyControlledDripperTest is DSTest {
             address(coin),
             address(0x1),
             rateSetter,
+            30 days,
             7 days
         );
     }
@@ -112,6 +121,7 @@ contract ExternallyControlledDripperTest is DSTest {
             address(0),
             address(0x1),
             rateSetter,
+            30 days,
             7 days
         );
     }
@@ -122,6 +132,7 @@ contract ExternallyControlledDripperTest is DSTest {
             address(coin),
             address(0),
             rateSetter,
+            30 days,
             7 days
         );
     }
@@ -132,6 +143,18 @@ contract ExternallyControlledDripperTest is DSTest {
             address(coin),
             address(0x1),
             address(0),
+            30 days,
+            7 days
+        );
+    }
+
+    function testFail_setup_null_reward_period() public {
+        dripper = new ExternallyControlledDripper(
+            [alice, bob],
+            address(coin),
+            address(0x1),
+            rateSetter,
+            0,
             7 days
         );
     }
@@ -142,6 +165,7 @@ contract ExternallyControlledDripperTest is DSTest {
             address(coin),
             address(0x1),
             rateSetter,
+            30 days,
             0
         );
     }
@@ -166,11 +190,18 @@ contract ExternallyControlledDripperTest is DSTest {
         dripper.removeAuthorization(address(this));
     }
 
-    function test_modify_parametersa() public {
+    function test_modify_parameters() public {
         dripper.modifyParameters("updateDelay", 1 weeks);
         assertEq(dripper.updateDelay(), 1 weeks);
 
-        hevm.warp(block.number + 3 days);
+        dripper.modifyParameters("rewardPeriod", 13 weeks);
+        assertEq(dripper.rewardPeriod(), 13 weeks);
+
+        dripper.modifyParameters("totalRewardPerBlock", 11 ether);
+        assertEq(dripper.totalRewardPerBlock(), 11 ether);
+
+        dripper.modifyParameters("requestorZeroShare", .5 ether);
+        assertEq(dripper.requestorZeroShare(), .5 ether);
 
         dripper.modifyParameters("requestor0", address(0xbeef));
         assertEq(dripper.requestors(0), address(0xbeef));
@@ -182,10 +213,25 @@ contract ExternallyControlledDripperTest is DSTest {
 
         dripper.modifyParameters("fundsHolder", address(0xbeef2));
         assertEq(address(dripper.fundsHolder()), address(0xbeef2));
+
+        dripper.modifyParameters("rateSetter", address(0xbeef3));
+        assertEq(address(dripper.rateSetter()), address(0xbeef3));
     }
 
     function testFail_modify_parameters_invalid_update_delay() public {
         dripper.modifyParameters("updateDelay", 0);
+    }
+
+    function testFail_modify_parameters_invalid_reward_period() public {
+        dripper.modifyParameters("rewardPeriod", 0);
+    }
+
+    function testFail_modify_parameters_invalid_requestor_share() public {
+        dripper.modifyParameters("requestorZeroShare", 1 ether + 1);
+    }
+
+    function testFail_modify_parameters_invalid_address() public {
+        dripper.modifyParameters("requestor0", address(0));
     }
 
     function testFail_modify_parameters_invalid_param_address() public {
@@ -227,13 +273,15 @@ contract ExternallyControlledDripperTest is DSTest {
     }
 
     function update_rates_to_1_eth_per_block() internal {
-        emitter.setTransferAmount(2 ether * (7 days / 12));
-        hevm.warp(dripper.lastUpdateTime() + 7 days);
+        emitter.setTransferAmount(2 ether * (30 days / 12));
+        hevm.warp(dripper.lastUpdateTime() + 30 days);
         hevm.prank(address(rateSetter));
         dripper.updateRate(10 ** 18 / 2); // 50% to alice, rest for bob
 
-        assertEq(dripper.rewardPerBlock(alice), 1 ether);
-        assertEq(dripper.rewardPerBlock(bob), 1 ether);
+        hevm.prank(alice);
+        assertEq(dripper.rewardPerBlock(), 1 ether);
+        hevm.prank(bob);
+        assertEq(dripper.rewardPerBlock(), 1 ether);
     }
 
     function test_drip_rewards() public {
@@ -268,80 +316,158 @@ contract ExternallyControlledDripperTest is DSTest {
         assertEq(coin.balanceOf(bob), 1 ether);
 
         dripper.dripReward(bob);
-        assertEq(coin.balanceOf(bob), 1 ether);        
-    }    
+        assertEq(coin.balanceOf(bob), 1 ether);
+    }
 
     function testFail_drip_rewards_invalid_caller() public {
         update_rates_to_1_eth_per_block();
         hevm.roll(block.number + 1);
-        dripper.dripReward(address(0x0dd));      
-    }      
+        dripper.dripReward(address(0x0dd));
+    }
 
     function test_update_rate() public {
-        hevm.warp(dripper.lastUpdateTime() + 7 days);
+        hevm.warp(dripper.lastUpdateTime() + dripper.updateDelay());
         hevm.prank(address(rateSetter));
 
         dripper.updateRate(10 ** 17); // 10% to alice, rest for bob
 
         uint dripperBalance = coin.balanceOf(address(dripper));
         assertEq(dripperBalance, 1 ether);
-        assertEq(dripper.rewardPerBlock(alice), uint(.1 ether) / (7 days / 12));
-        assertEq(dripper.rewardPerBlock(bob), uint(.9 ether) / (7 days / 12));
+        hevm.prank(alice);
+        assertEq(dripper.rewardPerBlock(), uint(.1 ether) / (30 days / 12));
+        hevm.prank(bob);
+        assertEq(dripper.rewardPerBlock(), uint(.9 ether) / (30 days / 12));
         assertEq(dripper.lastRewardBlock(address(alice)), block.number);
         assertEq(dripper.lastRewardBlock(address(bob)), block.number);
 
-        hevm.warp(dripper.lastUpdateTime() + 7 days);
+        hevm.warp(dripper.lastUpdateTime() + 30 days);
         hevm.prank(address(rateSetter));
 
         dripper.updateRate(10 ** 18 / 2); // 50% to alice, rest for bob
 
         dripperBalance = coin.balanceOf(address(dripper));
         assertEq(dripperBalance, 2 ether);
-        assertEq(dripper.rewardPerBlock(alice), uint(.5 ether) / (7 days / 12));
-        assertEq(dripper.rewardPerBlock(bob), uint(.5 ether) / (7 days / 12));
+        hevm.prank(alice);
+        assertEq(dripper.rewardPerBlock(), uint(1 ether) / (30 days / 12));
+        hevm.prank(bob);
+        assertEq(dripper.rewardPerBlock(), uint(1 ether) / (30 days / 12));
         assertEq(dripper.lastRewardBlock(address(alice)), block.number);
         assertEq(dripper.lastRewardBlock(address(bob)), block.number);
     }
+
+    function test_update_rate_full_drip() public {
+        hevm.warp(dripper.lastUpdateTime() + dripper.updateDelay());
+        hevm.prank(address(rateSetter));
+
+        dripper.updateRate(10 ** 17); // 10% to alice, rest for bob   
+        uint dripperBalance = coin.balanceOf(address(dripper));
+        assertEq(dripperBalance, 1 ether);     
+
+        hevm.prank(alice);
+        assertEq(dripper.rewardPerBlock(), uint(.1 ether) / (30 days / 12));
+        hevm.prank(bob);
+        assertEq(dripper.rewardPerBlock(), uint(.9 ether) / (30 days / 12));
+        assertEq(dripper.lastRewardBlock(address(alice)), block.number);
+        assertEq(dripper.lastRewardBlock(address(bob)), block.number);        
+
+        hevm.warp(dripper.lastUpdateTime() + 30 days);
+        hevm.roll(block.number + 1 + (30 days / 12));
+        hevm.prank(address(rateSetter));
+
+        dripper.updateRate(10 ** 18 / 2); // 50% to alice, rest for bob   
+
+        dripperBalance = coin.balanceOf(address(dripper));
+        assertEq(dripperBalance, 1 ether);
+        hevm.prank(alice);
+        assertEq(dripper.rewardPerBlock(), uint(.5 ether) / (30 days / 12));
+        hevm.prank(bob);
+        assertEq(dripper.rewardPerBlock(), uint(.5 ether) / (30 days / 12));
+        assertEq(dripper.lastRewardBlock(address(alice)), block.number);
+        assertEq(dripper.lastRewardBlock(address(bob)), block.number);             
+    }
+
+    function test_update_rate_no_drip() public {
+        hevm.warp(dripper.lastUpdateTime() + dripper.updateDelay());
+        hevm.prank(address(rateSetter));
+
+        dripper.updateRate(10 ** 17); // 10% to alice, rest for bob   
+        uint dripperBalance = coin.balanceOf(address(dripper));
+        assertEq(dripperBalance, 1 ether);     
+
+        hevm.prank(alice);
+        assertEq(dripper.rewardPerBlock(), uint(.1 ether) / (30 days / 12));
+        hevm.prank(bob);
+        assertEq(dripper.rewardPerBlock(), uint(.9 ether) / (30 days / 12));
+        assertEq(dripper.lastRewardBlock(address(alice)), block.number);
+        assertEq(dripper.lastRewardBlock(address(bob)), block.number);        
+
+        hevm.warp(dripper.lastUpdateTime() + 30 days);
+        hevm.roll(block.number + 1 + (30 days / 12));
+        emitter.setTransferAmount(0);        
+        hevm.prank(address(rateSetter));
+        dripper.updateRate(10 ** 18 / 2); // 50% to alice, rest for bob   
+
+        dripperBalance = coin.balanceOf(address(dripper));
+        assertEq(dripperBalance, 0 ether);
+        hevm.prank(alice);
+        assertEq(dripper.rewardPerBlock(), 0);
+        hevm.prank(bob);
+        assertEq(dripper.rewardPerBlock(), 0);
+        assertEq(dripper.lastRewardBlock(address(alice)), block.number);
+        assertEq(dripper.lastRewardBlock(address(bob)), block.number);             
+    }   
+
+    function test_update_rate_drip_continuously() public {
+        hevm.warp(dripper.lastUpdateTime() + dripper.updateDelay());
+        hevm.prank(address(rateSetter));
+
+        dripper.updateRate(10 ** 17); // 10% to alice, rest for bob   
+        uint dripperBalance = coin.balanceOf(address(dripper));
+        assertEq(dripperBalance, 1 ether);     
+
+        hevm.prank(alice);
+        assertEq(dripper.rewardPerBlock(), uint(.1 ether) / (30 days / 12));
+        hevm.prank(bob);
+        assertEq(dripper.rewardPerBlock(), uint(.9 ether) / (30 days / 12));
+        assertEq(dripper.lastRewardBlock(address(alice)), block.number);
+        assertEq(dripper.lastRewardBlock(address(bob)), block.number);        
+
+        hevm.warp(dripper.lastUpdateTime() + dripper.updateDelay());
+        hevm.roll(block.number + 1 + (dripper.updateDelay() / 12));
+        emitter.setRevertOnCall(true);        
+        hevm.prank(address(rateSetter));
+        dripper.updateRate(10 ** 18 / 2); // 50% to alice, rest for bob   
+
+        dripperBalance = coin.balanceOf(address(dripper));
+        assertEq(dripperBalance, 766662037037119172);
+        hevm.prank(alice);
+        assertEq(dripper.rewardPerBlock(), 2314800836464); // ~uint(.5 ether) / (30 days / 12)
+        hevm.prank(bob);
+        assertEq(dripper.rewardPerBlock(), 2314800836464); // ~uint(.5 ether) / (30 days / 12)
+        assertEq(dripper.lastRewardBlock(address(alice)), block.number);
+        assertEq(dripper.lastRewardBlock(address(bob)), block.number);             
+    }      
+
+    // change mid month
+    // revert on drip 
 
     function testFail_update_rate_unauthed() public {
         hevm.warp(dripper.lastUpdateTime() + 7 days);
 
         dripper.updateRate(10 ** 17);
-    }    
+    }
 
     function testFail_update_rate_too_soon() public {
-        hevm.warp(dripper.lastUpdateTime() + 7 days - 1);
+        hevm.warp(dripper.lastUpdateTime() + dripper.updateDelay() - 1);
         hevm.prank(address(rateSetter));
 
         dripper.updateRate(10 ** 17);
-    }        
+    }
 
     function testFail_update_rate_invalid_proportion() public {
-        hevm.warp(dripper.lastUpdateTime() + 7 days);
+        hevm.warp(dripper.lastUpdateTime() + dripper.updateDelay());
         hevm.prank(address(rateSetter));
 
         dripper.updateRate(10 ** 18 + 1);
-    }        
-
-    function test_update_rate_fuzz(uint proportion) public {
-        proportion = proportion % 10 ** 18; // up to 1 WAD or 100% requestor 0
-
-        hevm.warp(dripper.lastUpdateTime() + 7 days);
-        hevm.prank(address(rateSetter));
-
-        dripper.updateRate(proportion);
-
-        uint dripperBalance = coin.balanceOf(address(dripper));
-        assertEq(dripperBalance, 1 ether);
-        assertEq(
-            dripper.rewardPerBlock(alice),
-            (1 ether * proportion) / 10 ** 18 / (7 days / 12)
-        );
-        assertEq(
-            dripper.rewardPerBlock(bob),
-            (1 ether * (10 ** 18 - proportion)) / 10 ** 18 / (7 days / 12)
-        );
-        assertEq(dripper.lastRewardBlock(address(alice)), block.number);
-        assertEq(dripper.lastRewardBlock(address(bob)), block.number);
     }
 }

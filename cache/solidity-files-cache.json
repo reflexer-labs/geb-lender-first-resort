@@ -396,6 +396,52 @@
         }
       }
     },
+    "src/ExternallyControlledDripper.sol": {
+      "lastModificationDate": 1680305829943,
+      "contentHash": "826d5b386f5511ab82abe0232fc2955e",
+      "sourceName": "src/ExternallyControlledDripper.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [],
+      "versionRequirement": "=0.6.7",
+      "artifacts": {
+        "ExternallyControlledDripper": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "ExternallyControlledDripper.sol/ExternallyControlledDripper.json"
+        },
+        "FundsHolderLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "ExternallyControlledDripper.sol/FundsHolderLike.json"
+        },
+        "TokenLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "ExternallyControlledDripper.sol/TokenLike.json"
+        }
+      }
+    },
     "src/GebLenderFirstResort.sol": {
       "lastModificationDate": 1666996602749,
       "contentHash": "42b289bbfd93f1c33d638b86eb335c86",
@@ -574,7 +620,7 @@
       }
     },
     "src/GebRewards.sol": {
-      "lastModificationDate": 1667229330524,
+      "lastModificationDate": 1676421490019,
       "contentHash": "6412cbb3f0835a876d441bc9e9c07b99",
       "sourceName": "src/GebRewards.sol",
       "solcConfig": {
@@ -872,6 +918,62 @@
         },
         "Requestor": {
           "0.6.7+commit.b8d736ae.Darwin.appleclang": "AutoRewardDripper.t.sol/Requestor.json"
+        }
+      }
+    },
+    "src/test/ExternallyControllerDripper.t.sol": {
+      "lastModificationDate": 1680306143767,
+      "contentHash": "c25b5fea3f5709c3b2d08a5c02c0ca1e",
+      "sourceName": "src/test/ExternallyControllerDripper.t.sol",
+      "solcConfig": {
+        "settings": {
+          "optimizer": {
+            "enabled": true,
+            "runs": 200
+          },
+          "metadata": {
+            "bytecodeHash": "ipfs",
+            "appendCBOR": true
+          },
+          "outputSelection": {
+            "*": {
+              "": [
+                "ast"
+              ],
+              "*": [
+                "abi",
+                "evm.bytecode",
+                "evm.deployedBytecode",
+                "evm.methodIdentifiers",
+                "metadata"
+              ]
+            }
+          },
+          "evmVersion": "london",
+          "libraries": {}
+        }
+      },
+      "imports": [
+        "lib/geb-deploy/lib/ds-value/lib/ds-test/src/test.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-auth/src/auth.sol",
+        "lib/geb-deploy/lib/ds-value/lib/ds-thing/lib/ds-note/src/note.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/base.sol",
+        "lib/geb-deploy/lib/esm/lib/ds-token/src/token.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-math/src/math.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/ds-stop/src/stop.sol",
+        "lib/geb-deploy/lib/geb/lib/ds-token/lib/erc20/src/erc20.sol",
+        "src/ExternallyControlledDripper.sol"
+      ],
+      "versionRequirement": ">=0.6.7",
+      "artifacts": {
+        "ExternallyControlledDripperTest": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "ExternallyControllerDripper.t.sol/ExternallyControlledDripperTest.json"
+        },
+        "Hevm": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "ExternallyControllerDripper.t.sol/Hevm.json"
+        },
+        "MockFundsHolder": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "ExternallyControllerDripper.t.sol/MockFundsHolder.json"
         }
       }
     },
