@@ -397,8 +397,8 @@
       }
     },
     "src/ExternallyControlledDripper.sol": {
-      "lastModificationDate": 1680305829943,
-      "contentHash": "826d5b386f5511ab82abe0232fc2955e",
+      "lastModificationDate": 1680643302134,
+      "contentHash": "bdcfa5a99313813dc9915afcb3a3c73c",
       "sourceName": "src/ExternallyControlledDripper.sol",
       "solcConfig": {
         "settings": {
@@ -436,6 +436,9 @@
         },
         "FundsHolderLike": {
           "0.6.7+commit.b8d736ae.Darwin.appleclang": "ExternallyControlledDripper.sol/FundsHolderLike.json"
+        },
+        "RewardsPoolLike": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "ExternallyControlledDripper.sol/RewardsPoolLike.json"
         },
         "TokenLike": {
           "0.6.7+commit.b8d736ae.Darwin.appleclang": "ExternallyControlledDripper.sol/TokenLike.json"
@@ -922,8 +925,8 @@
       }
     },
     "src/test/ExternallyControllerDripper.t.sol": {
-      "lastModificationDate": 1680306143767,
-      "contentHash": "c25b5fea3f5709c3b2d08a5c02c0ca1e",
+      "lastModificationDate": 1680643841252,
+      "contentHash": "0650e0900017a1a310b110662fc026fc",
       "sourceName": "src/test/ExternallyControllerDripper.t.sol",
       "solcConfig": {
         "settings": {
@@ -974,6 +977,9 @@
         },
         "MockFundsHolder": {
           "0.6.7+commit.b8d736ae.Darwin.appleclang": "ExternallyControllerDripper.t.sol/MockFundsHolder.json"
+        },
+        "RewardsPoolMock": {
+          "0.6.7+commit.b8d736ae.Darwin.appleclang": "ExternallyControllerDripper.t.sol/RewardsPoolMock.json"
         }
       }
     },

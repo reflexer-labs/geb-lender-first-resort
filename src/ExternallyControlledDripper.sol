@@ -27,6 +27,10 @@ abstract contract FundsHolderLike {
     function releaseFunds() external virtual;
 }
 
+abstract contract RewardsPoolLike {
+    function updatePool() external virtual;
+}
+
 contract ExternallyControlledDripper {
     // --- Auth ---
     mapping(address => uint) public authorizedAccounts;
@@ -261,9 +265,9 @@ contract ExternallyControlledDripper {
         require(msg.sender == rateSetter, "RewardDripper/only-controller");
         require(requestorZeroShare_ <= WAD, "RewardDripper/invalid-share");
 
-        // drip values up to block.number
-        dripReward(requestors[0]);
-        dripReward(requestors[1]);
+        // force pool updates (pools will call dripReward and drip all available rewards up to now)
+        RewardsPoolLike(requestors[0]).updatePool();
+        RewardsPoolLike(requestors[1]).updatePool();
 
         if (rewardPeriodEnd <= now) rewardPeriodEnd = now + rewardPeriod;
 
