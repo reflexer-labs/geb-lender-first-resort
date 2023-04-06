@@ -37,7 +37,7 @@ contract MockFundsHolder {
         revertOnCall = roc;
     }    
 
-    function releaseFunds() external {
+    function emitTokens() external {
         require(msg.sender == dripper);
         require(!revertOnCall);
         token.transfer(msg.sender, transferAmount);
@@ -203,6 +203,9 @@ contract ExternallyControlledDripperTest is DSTest {
         dripper.modifyParameters("rewardPeriod", 13 weeks);
         assertEq(dripper.rewardPeriod(), 13 weeks);
 
+        dripper.modifyParameters("lastUpdateTime", now + 1 weeks);
+        assertEq(dripper.lastUpdateTime(), now + 1 weeks);
+
         dripper.modifyParameters("totalRewardPerBlock", 11 ether);
         assertEq(dripper.totalRewardPerBlock(), 11 ether);
 
@@ -231,6 +234,10 @@ contract ExternallyControlledDripperTest is DSTest {
     function testFail_modify_parameters_invalid_reward_period() public {
         dripper.modifyParameters("rewardPeriod", 0);
     }
+
+    function testFail_modify_parameters_invalid_last_update() public {
+        dripper.modifyParameters("lastUpdateTime", 0);
+    }    
 
     function testFail_modify_parameters_invalid_requestor_share() public {
         dripper.modifyParameters("requestorZeroShare", 1 ether + 1);

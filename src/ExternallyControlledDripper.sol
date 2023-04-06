@@ -24,7 +24,11 @@ abstract contract TokenLike {
 }
 
 abstract contract FundsHolderLike {
-    function releaseFunds() external virtual;
+    function emitTokens() external virtual;
+}
+
+abstract contract RewardsPoolLike {
+    function updatePool() external virtual;
 }
 
 abstract contract RewardsPoolLike {
@@ -163,6 +167,9 @@ contract ExternallyControlledDripper {
         } else if (parameter == "rewardPeriod") {
             require(data > 0, "RewardDripper/invalid-data");
             rewardPeriod = data;
+        } else if (parameter == "lastUpdateTime") {
+            require(data > 0, "RewardDripper/invalid-data");
+            lastUpdateTime = data;            
         } else if (parameter == "totalRewardPerBlock") {
             totalRewardPerBlock = data;
         } else if (parameter == "requestorZeroShare") {
@@ -272,7 +279,7 @@ contract ExternallyControlledDripper {
         if (rewardPeriodEnd <= now) rewardPeriodEnd = now + rewardPeriod;
 
         // pull funds
-        try fundsHolder.releaseFunds() {} catch {}
+        try fundsHolder.emitTokens() {} catch {}
         uint256 balance = rewardToken.balanceOf(address(this));
 
         // setting rewards per block
