@@ -31,10 +31,6 @@ abstract contract RewardsPoolLike {
     function updatePool() external virtual;
 }
 
-abstract contract RewardsPoolLike {
-    function updatePool() external virtual;
-}
-
 contract ExternallyControlledDripper {
     // --- Auth ---
     mapping(address => uint) public authorizedAccounts;
